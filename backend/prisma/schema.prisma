@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+
+  candidateProfile CandidateProfile?
+  company          Company?          @relation(fields: [companyId], references: [id])
+  companyId        String?
+
+  applications Application[]
+}
+
+model CandidateProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  headline  String?
+  bio       String?
+  skills    String?
+  resumeUrl String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Company {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  location    String?
+  createdAt   DateTime @default(now())
+
+  users User[]
+  jobs  Job[]
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  location    String
+  jobType     String
+  salaryMin   Int?
+  salaryMax   Int?
+  createdAt   DateTime @default(now())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  applications Application[]
+}
+
+model Application {
+  id          String   @id @default(uuid())
+  jobId       String
+  candidateId String
+  coverLetter String?
+  resumeUrl   String?
+  status      ApplicationStatus @default(PENDING)
+  appliedAt   DateTime          @default(now())
+
+  job       Job  @relation(fields: [jobId], references: [id])
+  candidate User @relation(fields: [candidateId], references: [id])
+}
+
+enum Role {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  REJECTED
+}
