@@ -14,22 +14,25 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  candidateProfile CandidateProfile?
-  company          Company?          @relation(fields: [companyId], references: [id])
-  companyId        String?
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
 
-  applications Application[]
+  candidateProfile CandidateProfile?
+  applications     Application[]
+  jobs             Job[] @relation("PostedJobs")
 }
 
 model CandidateProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  headline  String?
-  bio       String?
-  skills    String?
-  resumeUrl String?
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  headline       String?
+  bio            String?
+  skills         String?
+  resumeUrl      String?
+  resumeFileName String?
+  resumeFileType String?
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Company {
@@ -37,6 +40,7 @@ model Company {
   name        String
   description String?
   location    String?
+  website     String?
   createdAt   DateTime @default(now())
 
   users User[]
@@ -45,31 +49,40 @@ model Company {
 
 model Job {
   id          String   @id @default(uuid())
+  jobCode     String?   @unique
   title       String
   description String
   location    String
   jobType     String
   salaryMin   Int?
   salaryMax   Int?
-  createdAt   DateTime @default(now())
+  status      JobStatus @default(OPEN)
+  createdAt   DateTime  @default(now())
 
-  companyId String
+  companyId   String
+  createdById String
+
   company   Company @relation(fields: [companyId], references: [id])
+  createdBy User    @relation("PostedJobs", fields: [createdById], references: [id])
 
   applications Application[]
 }
 
 model Application {
-  id          String   @id @default(uuid())
-  jobId       String
-  candidateId String
-  coverLetter String?
-  resumeUrl   String?
-  status      ApplicationStatus @default(PENDING)
-  appliedAt   DateTime          @default(now())
+  id             String            @id @default(uuid())
+  jobId          String
+  candidateId    String
+  coverLetter    String?
+  resumeUrl      String?
+  resumeFileName String?
+  resumeFileType String?
+  status         ApplicationStatus @default(PENDING)
+  appliedAt      DateTime          @default(now())
 
-  job       Job  @relation(fields: [jobId], references: [id])
-  candidate User @relation(fields: [candidateId], references: [id])
+  job       Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate User @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, candidateId])
 }
 
 enum Role {
@@ -80,6 +93,12 @@ enum Role {
 
 enum ApplicationStatus {
   PENDING
+  REVIEWED
   SHORTLISTED
   REJECTED
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
 }
