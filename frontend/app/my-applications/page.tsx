@@ -1,98 +1,126 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Application = {
+  id: string;
+  status: string;
+  appliedAt: string;
+  coverLetter?: string;
+  job: {
     id: string;
-    status: string;
-    appliedAt: string;
-    coverLetter?: string;
-    job: {
-        id: string;
-        title: string;
-        location: string;
-        jobType: string;
-        company?: {
-            name: string;
-        };
+    title: string;
+    location: string;
+    jobType: string;
+    company?: {
+      name: string;
     };
+  };
 };
 
 export default function MyApplicationsPage() {
-    const [applications, setApplications] = useState<Application[]>([]);
-    const [message, setMessage] = useState("");
-    const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-    useEffect(() => {
-        const fetchApplications = async () => {
-            try {
-                const token = localStorage.getItem("token");
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
 
-                if (!token) {
-                    setMessage("No token found. Please log in first.");
-                    return;
-                }
+  const [authorized, setAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-                const res = await fetch("http://localhost:5000/api/jobs/my-applications", {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-                const data = await res.json();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
-                if (data.success) {
-                    setApplications(data.applications || []);
-                } else {
-                    setMessage(data.message || "Failed to load applications.");
-                }
-            } catch (error) {
-                setMessage("Something went wrong while loading applications.");
-            } finally {
-                setLoading(false);
-            }
-        };
+    if (role !== "CANDIDATE") {
+      router.push("/my-jobs");
+      return;
+    }
 
-        fetchApplications();
-    }, []);
+    setAuthorized(true);
+    setCheckingAuth(false);
+  }, [router]);
 
-    return (
-        <main className="p-6 max-w-4xl mx-auto">
-            <h1 className="text-2xl font-bold mb-6">My Applications</h1>
+  useEffect(() => {
+    if (!authorized) return;
 
-            {loading && <p>Loading...</p>}
+    const fetchApplications = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-            {!loading && message && <p>{message}</p>}
+        const res = await fetch("http://localhost:5000/api/jobs/my-applications", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-            {!loading && !message && applications.length === 0 && (
-                <p>You have not applied to any jobs yet.</p>
+        const data = await res.json();
+
+        if (data.success) {
+          setApplications(data.applications || []);
+        } else {
+          setMessage(data.message || "Failed to load applications.");
+        }
+      } catch (error) {
+        setMessage("Something went wrong while loading applications.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, [authorized]);
+
+  if (checkingAuth) {
+    return <main className="p-6">Checking access...</main>;
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
+  return (
+    <main className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">My Applications</h1>
+
+      {loading && <p>Loading...</p>}
+      {!loading && message && <p>{message}</p>}
+
+      {!loading && !message && applications.length === 0 && (
+        <p>You have not applied to any jobs yet.</p>
+      )}
+
+      <div className="space-y-4">
+        {applications.map((application) => (
+          <div key={application.id} className="border rounded-lg p-4 shadow-sm">
+            <h2 className="text-lg font-semibold">{application.job.title}</h2>
+            <p className="text-gray-600">
+              {application.job.company?.name} • {application.job.location}
+            </p>
+            <p className="mt-1">
+              <span className="font-medium">Job Type:</span> {application.job.jobType}
+            </p>
+            <p className="mt-1">
+              <span className="font-medium">Status:</span> {application.status}
+            </p>
+            <p className="mt-1 text-sm text-gray-500">
+              Applied on: {new Date(application.appliedAt).toLocaleString()}
+            </p>
+            {application.coverLetter && (
+              <p className="mt-2">
+                <span className="font-medium">Cover Letter:</span>{" "}
+                {application.coverLetter}
+              </p>
             )}
-
-            <div className="space-y-4">
-                {applications.map((application) => (
-                    <div key={application.id} className="border rounded-lg p-4 shadow-sm">
-                        <h2 className="text-lg font-semibold">{application.job.title}</h2>
-                        <p className="text-gray-600">
-                            {application.job.company?.name} • {application.job.location}
-                        </p>
-                        <p className="mt-1">
-                            <span className="font-medium">Job Type:</span> {application.job.jobType}
-                        </p>
-                        <p className="mt-1">
-                            <span className="font-medium">Status:</span> {application.status}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500">
-                            Applied on: {new Date(application.appliedAt).toLocaleString()}
-                        </p>
-                        {application.coverLetter && (
-                            <p className="mt-2">
-                                <span className="font-medium">Cover Letter:</span>{" "}
-                                {application.coverLetter}
-                            </p>
-                        )}
-                    </div>
-                ))}
-            </div>
-        </main>
-    );
+          </div>
+        ))}
+      </div>
+    </main>
+  );
 }

@@ -1,67 +1,105 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-type Application = {
-    id: string;
-    status: string;
-    appliedAt: string;
-    job: {
-        title: string;
-        location: string;
-        company?: {
-            name: string;
-        };
-    };
+type Job = {
+  id: string;
+  title: string;
+  location: string;
+  jobType: string;
 };
 
-export default function MyApplicationsPage() {
-    const [applications, setApplications] = useState<Application[]>([]);
-    const [message, setMessage] = useState("");
+export default function MyJobsPage() {
+  const router = useRouter();
 
-    useEffect(() => {
-        const fetchApplications = async () => {
-            const token = localStorage.getItem("token");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
 
-            if (!token) {
-                setMessage("No token found.");
-                return;
-            }
+  const [authorized, setAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-            const res = await fetch("http://localhost:5000/api/jobs/my-applications", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-            const data = await res.json();
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
-            if (data.success) {
-                setApplications(data.applications || []);
-            } else {
-                setMessage(data.message || "Failed to load applications.");
-            }
-        };
+    if (role !== "EMPLOYER") {
+      router.push("/jobs");
+      return;
+    }
 
-        fetchApplications();
-    }, []);
+    setAuthorized(true);
+    setCheckingAuth(false);
+  }, [router]);
 
-    return (
-        <main className="p-6">
-            <h1 className="text-2xl font-bold mb-4">My Applications</h1>
+  useEffect(() => {
+    if (!authorized) return;
 
-            {message && <p>{message}</p>}
+    const fetchJobs = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-            <div className="space-y-4">
-                {applications.map((application) => (
-                    <div key={application.id} className="border rounded p-4">
-                        <h2 className="font-semibold">{application.job.title}</h2>
-                        <p>{application.job.company?.name}</p>
-                        <p>{application.job.location}</p>
-                        <p>Status: {application.status}</p>
-                    </div>
-                ))}
-            </div>
-        </main>
-    );
+        const res = await fetch("http://localhost:5000/api/jobs/my-jobs", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          setJobs(data.jobs || []);
+        } else {
+          setMessage(data.message || "Failed to load jobs.");
+        }
+      } catch (error) {
+        setMessage("Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [authorized]);
+
+  if (checkingAuth) {
+    return <main className="p-6">Checking access...</main>;
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
+  return (
+    <main className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">My Jobs</h1>
+
+      {loading && <p>Loading...</p>}
+      {!loading && message && <p>{message}</p>}
+
+      <div className="space-y-4">
+        {jobs.map((job) => (
+          <div key={job.id} className="border rounded-lg p-4">
+            <h2 className="font-semibold text-lg">{job.title}</h2>
+            <p className="text-gray-600">{job.location}</p>
+            <p>{job.jobType}</p>
+
+            <Link
+              href={`/jobs/${job.id}/applicants`}
+              className="inline-block mt-3 text-blue-600"
+            >
+              View Applicants
+            </Link>
+          </div>
+        ))}
+      </div>
+    </main>
+  );
 }

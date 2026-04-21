@@ -1,69 +1,110 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 type Applicant = {
-    id: string;
-    coverLetter?: string;
-    candidate: {
-        name: string;
-        email: string;
-    };
+  id: string;
+  coverLetter?: string;
+  candidate: {
+    name: string;
+    email: string;
+  };
 };
 
 export default function ApplicantsPage() {
-    const params = useParams();
-    const jobId = params.id as string;
+  const params = useParams();
+  const router = useRouter();
+  const jobId = params.id as string;
 
-    const [applicants, setApplicants] = useState<Applicant[]>([]);
-    const [message, setMessage] = useState("");
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchApplicants = async () => {
-            const token = localStorage.getItem("token");
+  const [authorized, setAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-            if (!token) {
-                setMessage("No token found.");
-                return;
-            }
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
 
-            const res = await fetch(
-                `http://localhost:5000/api/jobs/${jobId}/applicants`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                }
-            );
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
-            const data = await res.json();
+    if (role !== "EMPLOYER") {
+      router.push("/jobs");
+      return;
+    }
 
-            if (data.success) {
-                setApplicants(data.applicants || []);
-            } else {
-                setMessage(data.message || "Failed to load applicants.");
-            }
-        };
+    setAuthorized(true);
+    setCheckingAuth(false);
+  }, [router]);
 
-        fetchApplicants();
-    }, [jobId]);
+  useEffect(() => {
+    if (!authorized) return;
 
-    return (
-        <main className="p-6">
-            <h1 className="text-2xl font-bold mb-4">Applicants</h1>
+    const fetchApplicants = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-            {message && <p>{message}</p>}
+        const res = await fetch(
+          `http://localhost:5000/api/jobs/${jobId}/applicants`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-            <div className="space-y-4">
-                {applicants.map((applicant) => (
-                    <div key={applicant.id} className="border rounded p-4">
-                        <h2 className="font-semibold">{applicant.candidate.name}</h2>
-                        <p>{applicant.candidate.email}</p>
-                        <p>{applicant.coverLetter}</p>
-                    </div>
-                ))}
-            </div>
-        </main>
-    );
+        const data = await res.json();
+
+        if (data.success) {
+          setApplicants(data.applicants || []);
+        } else {
+          setMessage(data.message || "Failed to load applicants.");
+        }
+      } catch (error) {
+        setMessage("Something went wrong.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplicants();
+  }, [authorized, jobId]);
+
+  if (checkingAuth) {
+    return <main className="p-6">Checking access...</main>;
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
+  return (
+    <main className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Applicants</h1>
+
+      {loading && <p>Loading...</p>}
+      {!loading && message && <p>{message}</p>}
+
+      <div className="space-y-4">
+        {applicants.map((applicant) => (
+          <div key={applicant.id} className="border rounded-lg p-4">
+            <h2 className="font-semibold">{applicant.candidate.name}</h2>
+            <p>{applicant.candidate.email}</p>
+
+            {applicant.coverLetter && (
+              <p className="mt-2">
+                <span className="font-medium">Cover Letter:</span>{" "}
+                {applicant.coverLetter}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </main>
+  );
 }

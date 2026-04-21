@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Job = {
     id: string;
@@ -17,48 +18,138 @@ type Job = {
 
 export default function JobsPage() {
     const [jobs, setJobs] = useState<Job[]>([]);
-    const [keyword, setKeyword] = useState("");
-    const [location, setLocation] = useState("");
-    const [jobType, setJobType] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
+
+    const [filters, setFilters] = useState({
+        keyword: "",
+        location: "",
+        jobType: "",
+    });
 
     const fetchJobs = async () => {
-        const params = new URLSearchParams();
+        try {
+            setLoading(true);
+            setMessage("");
 
-        if (keyword) params.append("keyword", keyword);
-        if (location) params.append("location", location);
-        if (jobType) params.append("jobType", jobType);
+            const params = new URLSearchParams();
 
-        const res = await fetch(`http://localhost:5000/api/jobs?${params.toString()}`);
-        const data = await res.json();
-        setJobs(data.jobs || []);
+            if (filters.keyword.trim()) {
+                params.append("keyword", filters.keyword.trim());
+            }
+
+            if (filters.location.trim()) {
+                params.append("location", filters.location.trim());
+            }
+
+            if (filters.jobType.trim()) {
+                params.append("jobType", filters.jobType.trim());
+            }
+
+            const url = `http://localhost:5000/api/jobs${params.toString() ? `?${params.toString()}` : ""
+                }`;
+
+            console.log("Fetching jobs from:", url);
+
+            const res = await fetch(url, {
+                cache: "no-store",
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setJobs(data.jobs || []);
+            } else {
+                setMessage(data.message || "Failed to load jobs.");
+                setJobs([]);
+            }
+        } catch (error) {
+            setMessage("Something went wrong while loading jobs.");
+            setJobs([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         fetchJobs();
     }, []);
 
-    return (
-        <main className="p-6">
-            <h1 className="text-2xl font-bold mb-6">Job Listings</h1>
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    ) => {
+        setFilters({
+            ...filters,
+            [e.target.name]: e.target.value,
+        });
+    };
 
-            <div className="grid gap-3 md:grid-cols-4 mb-6">
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        fetchJobs();
+    };
+
+    const handleReset = async () => {
+        setFilters({
+            keyword: "",
+            location: "",
+            jobType: "",
+        });
+
+        try {
+            setLoading(true);
+            setMessage("");
+
+            const res = await fetch("http://localhost:5000/api/jobs", {
+                cache: "no-store",
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                setJobs(data.jobs || []);
+            } else {
+                setMessage(data.message || "Failed to load jobs.");
+                setJobs([]);
+            }
+        } catch (error) {
+            setMessage("Something went wrong while loading jobs.");
+            setJobs([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <main className="max-w-5xl mx-auto p-6">
+            <h1 className="text-3xl font-bold mb-6">Job Listings</h1>
+
+            <form
+                onSubmit={handleSearch}
+                className="border rounded-xl p-4 mb-6 grid gap-4 md:grid-cols-4"
+            >
                 <input
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
+                    type="text"
+                    name="keyword"
+                    value={filters.keyword}
+                    onChange={handleChange}
                     placeholder="Search by keyword"
                     className="border rounded px-3 py-2"
                 />
 
                 <input
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    type="text"
+                    name="location"
+                    value={filters.location}
+                    onChange={handleChange}
                     placeholder="Filter by location"
                     className="border rounded px-3 py-2"
                 />
 
                 <select
-                    value={jobType}
-                    onChange={(e) => setJobType(e.target.value)}
+                    name="jobType"
+                    value={filters.jobType}
+                    onChange={handleChange}
                     className="border rounded px-3 py-2"
                 >
                     <option value="">All job types</option>
@@ -67,37 +158,63 @@ export default function JobsPage() {
                     <option value="Remote">Remote</option>
                 </select>
 
-                <button
-                    onClick={fetchJobs}
-                    className="rounded bg-black text-white px-4 py-2"
-                >
-                    Search
-                </button>
-            </div>
+                <div className="flex gap-2">
+                    <button
+                        type="submit"
+                        className="bg-black text-white px-4 py-2 rounded w-full"
+                    >
+                        Search
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleReset}
+                        className="border px-4 py-2 rounded w-full"
+                    >
+                        Reset
+                    </button>
+                </div>
+            </form>
+
+            {loading && <p>Loading jobs...</p>}
+            {!loading && message && <p>{message}</p>}
+
+            {!loading && !message && jobs.length === 0 && (
+                <div className="border rounded-xl p-6 text-center">
+                    <p className="text-lg font-medium">No jobs found</p>
+                    <p className="text-gray-600 mt-2">
+                        Try changing your search or filters.
+                    </p>
+                </div>
+            )}
 
             <div className="space-y-4">
-                {jobs.length === 0 ? (
-                    <p>No jobs found.</p>
-                ) : (
-                    jobs.map((job) => (
-                        <div key={job.id} className="border rounded p-4">
-                            <h2 className="text-lg font-semibold">{job.title}</h2>
-                            <p className="text-sm text-gray-600">
-                                {job.company?.name} • {job.location}
-                            </p>
-                            <p className="text-sm mt-1">{job.jobType}</p>
-                            <p className="text-sm mt-1">
-                                Salary: {job.salaryMin ?? "-"} - {job.salaryMax ?? "-"}
-                            </p>
-                            <a
-                                href={`/jobs/${job.id}`}
-                                className="inline-block mt-3 text-blue-600"
-                            >
-                                View Details
-                            </a>
-                        </div>
-                    ))
-                )}
+                {jobs.map((job) => (
+                    <div key={job.id} className="border rounded-xl p-4 shadow-sm">
+                        <h2 className="text-xl font-semibold">{job.title}</h2>
+
+                        {job.jobCode && (
+                            <p className="text-sm text-gray-500 mt-1">{job.jobCode}</p>
+                        )}
+
+                        <p className="text-gray-700 mt-1">
+                            {job.company?.name} • {job.location}
+                        </p>
+
+                        <p className="mt-1 text-sm text-gray-600">{job.jobType}</p>
+
+                        <p className="mt-1 text-sm">
+                            Salary: {job.salaryMin ?? "-"} - {job.salaryMax ?? "-"}
+                        </p>
+
+                        <Link
+                            href={`/jobs/${job.id}`}
+                            className="inline-block mt-3 text-blue-600"
+                        >
+                            View Details
+                        </Link>
+                    </div>
+                ))}
             </div>
         </main>
     );

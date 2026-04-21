@@ -1,0 +1,21 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "Job Portal" [ref=e4] [cursor=pointer]:
+      - /url: /
+    - generic [ref=e5]:
+      - link "Register" [ref=e6] [cursor=pointer]:
+        - /url: /register
+      - link "Login" [ref=e7] [cursor=pointer]:
+        - /url: /login
+      - link "Jobs" [ref=e8] [cursor=pointer]:
+        - /url: /jobs
+  - main [ref=e9]:
+    - heading "Job Portal" [level=1] [ref=e10]
+    - generic [ref=e11]:
+      - link "Register" [ref=e12] [cursor=pointer]:
+        - /url: /register
+      - link "Login" [ref=e13] [cursor=pointer]:
+        - /url: /login
+      - link "View Jobs" [ref=e14] [cursor=pointer]:
+        - /url: /jobs
+  - alert [ref=e15]

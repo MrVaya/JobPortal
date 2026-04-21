@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - heading "Job Listings" [level=1] [ref=e3]
+    - generic [ref=e4]:
+      - textbox "Search by keyword" [ref=e5]
+      - textbox "Filter by location" [ref=e6]
+      - combobox [ref=e7]:
+        - option "All job types" [selected]
+        - option "Full-time"
+        - option "Part-time"
+        - option "Remote"
+      - button "Search" [ref=e8]
+    - paragraph [ref=e10]: No jobs found.
+  - button "Open Next.js Dev Tools" [ref=e16] [cursor=pointer]:
+    - img [ref=e17]

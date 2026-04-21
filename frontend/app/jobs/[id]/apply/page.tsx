@@ -1,72 +1,110 @@
-type Job = {
-    id: string;
-    jobCode?: string;
-    title: string;
-    description: string;
-    location: string;
-    jobType: string;
-    salaryMin?: number;
-    salaryMax?: number;
-    company?: {
-        name: string;
-        location?: string;
-        website?: string;
-        description?: string;
-    };
-};
+"use client";
 
-async function getJob(id: string): Promise<Job | null> {
-    const res = await fetch(`http://localhost:5000/api/jobs/${id}`, {
-        cache: "no-store",
-    });
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 
-    const data = await res.json();
-    return data.job || null;
-}
+export default function ApplyPage() {
+  const params = useParams();
+  const router = useRouter();
+  const jobId = params.id as string;
 
-export default async function JobDetailsPage({
-    params,
-}: {
-    params: Promise<{ id: string }>;
-}) {
-    const { id } = await params;
-    const job = await getJob(id);
+  const [coverLetter, setCoverLetter] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    if (!job) {
-        return <main className="p-6">Job not found.</main>;
+  const [authorized, setAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token) {
+      router.push("/login");
+      return;
     }
 
-    return (
-        <main className="p-6 max-w-3xl">
-            <h1 className="text-3xl font-bold">{job.title}</h1>
+    if (role !== "CANDIDATE") {
+      router.push("/my-jobs");
+      return;
+    }
 
-            <p className="mt-2 text-gray-600">
-                {job.company?.name} • {job.location}
-            </p>
+    setAuthorized(true);
+    setCheckingAuth(false);
+  }, [router]);
 
-            <p className="mt-2">
-                {job.jobType} • Salary: {job.salaryMin ?? "-"} - {job.salaryMax ?? "-"}
-            </p>
+  const handleApply = async () => {
+    try {
+      setLoading(true);
+      setMessage("");
 
-            <section className="mt-6">
-                <h2 className="text-xl font-semibold mb-2">Job Description</h2>
-                <p>{job.description}</p>
-            </section>
+      const token = localStorage.getItem("token");
 
-            <section className="mt-6">
-                <h2 className="text-xl font-semibold mb-2">Company</h2>
-                <p>{job.company?.name}</p>
-                <p>{job.company?.description}</p>
-            </section>
+      if (!token) {
+        setMessage("No token found. Please log in first.");
+        return;
+      }
 
-            <div className="mt-8">
-                <a
-                    href={`/jobs/${job.id}/apply`}
-                    className="rounded bg-black text-white px-4 py-2 inline-block"
-                >
-                    Apply Now
-                </a>
-            </div>
-        </main>
-    );
-}
+      const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/apply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          coverLetter,
+          resumeUrl: "resume.pdf",
+          resumeFileName: "resume.pdf",
+          resumeFileType: "application/pdf",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setMessage("Application submitted successfully.");
+        setCoverLetter("");
+      } else {
+        setMessage(data.message || "Something went wrong.");
+      }
+    } catch (error) {
+      setMessage("Failed to submit application.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (checkingAuth) {
+    return <main className="p-6">Checking access...</main>;
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
+  return (
+    <main className="p-6 max-w-2xl mx-auto">
+      <div className="border rounded-lg p-6 shadow-sm">
+        <h1 className="text-2xl font-bold mb-4">Apply to Job</h1>
+
+        <label className="block mb-2 font-medium">Cover Letter</label>
+        <textarea
+          value={coverLetter}
+          onChange={(e) => setCoverLetter(e.target.value)}
+          placeholder="Write your cover letter here..."
+          className="w-full border rounded p-3 h-40"
+        />
+
+        <button
+          onClick={handleApply}
+          disabled={loading}
+          className="mt-4 bg-black text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {loading ? "Submitting..." : "Submit Application"}
+        </button>
+
+        {message && <p className="mt-4">{message}</p>}
+      </div>
+    </main>
+  );
+} 
