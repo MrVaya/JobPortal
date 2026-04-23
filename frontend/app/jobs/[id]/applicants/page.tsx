@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-
+import Link from "next/link"; 
 type Applicant = {
   id: string;
   coverLetter?: string;
@@ -85,7 +85,21 @@ export default function ApplicantsPage() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
+
+      <div className="mb-6">
+  <Link href="/my-jobs" className="text-blue-600 text-sm">
+    ← Back to My Jobs
+  </Link>
+
+  <div className="mb-6">
+  <h1 className="text-2xl font-bold">Applicants</h1>
+  <p className="text-gray-600 mt-1">
+    Review candidates who applied for this job.
+  </p>
+</div>
+</div>
       <h1 className="text-2xl font-bold mb-6">Applicants</h1>
+      
 
       {loading && <p>Loading...</p>}
       {!loading && message && <p>{message}</p>}

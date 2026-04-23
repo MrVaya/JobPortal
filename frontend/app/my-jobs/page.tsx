@@ -79,7 +79,21 @@ export default function MyJobsPage() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">My Jobs</h1>
+   <div className="mb-6 flex items-center justify-between">
+  <div>
+    <h1 className="text-2xl font-bold">My Jobs</h1>
+    <p className="text-gray-600 mt-1">
+      Manage the jobs you have posted.
+    </p>
+  </div>
+
+  <Link
+    href="/create-job"
+    className="bg-black text-white px-4 py-2 rounded"
+  >
+    Create Job
+  </Link>
+</div>
 
       {loading && <p>Loading...</p>}
       {!loading && message && <p>{message}</p>}

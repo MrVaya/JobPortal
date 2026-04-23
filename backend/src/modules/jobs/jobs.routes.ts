@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { resumeUpload } from "../../middleware/upload.middleware";
 import {
     createJob,
     getMyJobs,
@@ -22,10 +23,11 @@ router.get(
 );
 
 router.post(
-    "/:jobId/apply",
-    authMiddleware,
-    requireRole("CANDIDATE"),
-    applyToJob
+  "/:jobId/apply",
+  authMiddleware,
+  requireRole("CANDIDATE"),
+  resumeUpload.single("resume"),
+  applyToJob
 );
 
 router.post("/", authMiddleware, requireRole("EMPLOYER"), createJob);

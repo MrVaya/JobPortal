@@ -98,8 +98,6 @@ async function main() {
             resumeUrl: "resume-sample.pdf",
         },
     });
-
-    console.log("Seed data inserted successfully");
 }
 
 main()

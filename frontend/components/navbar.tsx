@@ -30,9 +30,7 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
-
     window.dispatchEvent(new Event("auth-changed"));
-
     router.push("/");
   };
 
@@ -40,23 +38,21 @@ export default function Navbar() {
 
   return (
     <nav className="border-b px-6 py-4 flex items-center justify-between">
-      <div>
-        <Link href="/" className="text-xl font-bold">
-          Job Portal
-        </Link>
-      </div>
+      <Link href="/" className="text-xl font-bold">
+        Job Portal
+      </Link>
 
       <div className="flex items-center gap-4">
         {!role && (
           <>
+            <Link href="/jobs" className="text-sm">
+              Jobs
+            </Link>
             <Link href="/register" className="text-sm">
               Register
             </Link>
             <Link href="/login" className="text-sm">
               Login
-            </Link>
-            <Link href="/jobs" className="text-sm">
-              Jobs
             </Link>
           </>
         )}
