@@ -1,35 +1,43 @@
 import { Request, Response } from "express";
 import {
-    createJobService,
-    getMyJobsService,
-    getAllJobsService,
-    getJobByIdService,
-    applyToJobService,
-    getMyApplicationsService,
-    getJobApplicantsService,
+  createJobService,
+  getMyJobsService,
+  getAllJobsService,
+  getJobByIdService,
+  applyToJobService,
+  getMyApplicationsService,
+  getJobApplicantsService,
 } from "./jobs.service";
+import { validateBody } from "../../utils/validate";
+import { createJobSchema, applyToJobSchema } from "../../validations/job.validation";
 
 export const createJob = async (req: any, res: Response) => {
-    try {
-        if (!req.body) {
-            return res.status(400).json({
-                success: false,
-                message: "Request body is required",
-            });
-        }
+  try {
+    const validatedData = validateBody(createJobSchema, {
+      ...req.body,
+      salaryMin:
+        req.body.salaryMin !== undefined && req.body.salaryMin !== null
+          ? Number(req.body.salaryMin)
+          : null,
+      salaryMax:
+        req.body.salaryMax !== undefined && req.body.salaryMax !== null
+          ? Number(req.body.salaryMax)
+          : null,
+    });
 
-        const job = await createJobService(req.body, req.user.userId);
+    const job = await createJobService(validatedData, req.user.userId);
 
-        return res.status(201).json({
-            success: true,
-            job,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-            message: error.message,
-        });
-    }
+    return res.status(201).json({
+      success: true,
+      message: "Job created successfully",
+      job,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to create job",
+    });
+  }
 };
 
 export const getMyJobs = async (req: any, res: Response) => {
@@ -38,12 +46,13 @@ export const getMyJobs = async (req: any, res: Response) => {
 
         return res.status(200).json({
             success: true,
+          message: "Employer jobs retrieved successfully",
             jobs,
         });
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: error.message,
+          message: error.message || "Failed to retrieve employer jobs",
         });
     }
 };
@@ -54,12 +63,13 @@ export const getAllJobs = async (req: Request, res: Response) => {
 
         return res.status(200).json({
             success: true,
+          message: "Jobs retrieved successfully",
             jobs,
         });
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: error.message,
+          message: error.message || "Failed to retrieve jobs",
         });
     }
 };
@@ -86,34 +96,47 @@ export const getJobById = async (req: Request, res: Response) => {
 
         return res.status(200).json({
             success: true,
+          message: "Job retrieved successfully",
             job,
         });
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: error.message,
+          message: error.message || "Failed to retrieve job details",
         });
     }
 };
 
 export const applyToJob = async (req: any, res: Response) => {
-    try {
-        const application = await applyToJobService(
-            req.params.jobId,
-            req.user.userId,
-            req.body
-        );
+  try {
+    const file = req.file;
 
-        return res.status(201).json({
-            success: true,
-            application,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-            message: error.message,
-        });
-    }
+    const validatedData = validateBody(applyToJobSchema, {
+      coverLetter: req.body.coverLetter,
+    });
+
+    const application = await applyToJobService(
+      req.params.jobId,
+      req.user.userId,
+      {
+        coverLetter: validatedData.coverLetter,
+        resumeUrl: file ? `/uploads/resumes/${file.filename}` : null,
+        resumeFileName: file ? file.originalname : null,
+        resumeFileType: file ? file.mimetype : null,
+      }
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Application submitted successfully",
+      application,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Failed to submit job application",
+    });
+  }
 };
 
 export const getMyApplications = async (req: any, res: Response) => {
@@ -122,12 +145,13 @@ export const getMyApplications = async (req: any, res: Response) => {
 
         return res.status(200).json({
             success: true,
+          message: "Applications retrieved successfully",
             applications,
         });
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: error.message,
+          message: error.message || "Failed to retrieve applications",
         });
     }
 };
@@ -141,12 +165,13 @@ export const getJobApplicants = async (req: any, res: Response) => {
 
         return res.status(200).json({
             success: true,
+          message: "Job applicants retrieved successfully",
             applicants,
         });
     } catch (error: any) {
         return res.status(400).json({
             success: false,
-            message: error.message,
+          message: error.message || "Failed to retrieve job applicants",
         });
     }
 };

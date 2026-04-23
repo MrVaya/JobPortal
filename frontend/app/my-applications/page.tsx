@@ -87,7 +87,14 @@ export default function MyApplicationsPage() {
 
   return (
     <main className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">My Applications</h1>
+
+      <div className="mb-6">
+  <h1 className="text-2xl font-bold">My Applications</h1>
+  <p className="text-gray-600 mt-1">
+    Track the jobs you have applied to.
+  </p>
+</div>
+      
 
       {loading && <p>Loading...</p>}
       {!loading && message && <p>{message}</p>}

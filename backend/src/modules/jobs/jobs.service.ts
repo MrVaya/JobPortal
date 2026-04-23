@@ -158,17 +158,16 @@ export const applyToJobService = async (
         throw new Error("You already applied to this job");
     }
 
-    const application = await prisma.application.create({
-        data: {
-            jobId,
-            candidateId: userId,
-            coverLetter: data.coverLetter,
-            resumeUrl: data.resumeUrl,
-            resumeFileName: data.resumeFileName,
-            resumeFileType: data.resumeFileType,
-        },
-    });
-
+   const application = await prisma.application.create({
+  data: {
+    jobId,
+    candidateId: userId,
+    coverLetter: data?.coverLetter,
+    resumeUrl: data?.resumeUrl,
+    resumeFileName: data?.resumeFileName,
+    resumeFileType: data?.resumeFileType,
+  },
+});
 
 
 

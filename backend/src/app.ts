@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import authRoutes from "./modules/auth/auth.routes";
 import { authMiddleware } from "./middleware/auth.middleware";
-
+import path from "path";
 import { requireRole } from "./middleware/role.middleware";
 
 import jobRoutes from "./modules/jobs/jobs.routes";
@@ -11,6 +11,7 @@ const app = express();
 
 app.get("/api/protected", authMiddleware, (req: any, res) => {
     res.json({
+        success: true,
         message: "You are authorized",
         user: req.user,
     });
@@ -18,7 +19,7 @@ app.get("/api/protected", authMiddleware, (req: any, res) => {
 
 app.use(cors());
 app.use(express.json());
-
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/", (_req, res) => {
     res.send("API running");
 });
@@ -30,7 +31,10 @@ app.get(
     authMiddleware,
     requireRole("EMPLOYER"),
     (req: any, res) => {
-        res.json({ message: "Employer access granted" });
+        res.json({
+            success: true,
+            message: "Employer access granted",
+        });
     }
 );
 

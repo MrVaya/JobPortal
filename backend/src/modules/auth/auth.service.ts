@@ -4,32 +4,68 @@ import { generateToken } from "../../lib/jwt";
 import { Role } from "@prisma/client";
 
 export const registerUser = async (data: any) => {
-    const { name, email, password, role } = data;
+  const {
+    name,
+    email,
+    password,
+    role,
+    companyName,
+    companyLocation,
+    companyDescription,
+    companyWebsite,
+  } = data;
 
-    const existingUser = await prisma.user.findUnique({
-        where: { email },
+  if (!["CANDIDATE", "EMPLOYER"].includes(role)) {
+    throw new Error("Invalid role");
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    throw new Error("User already exists");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  let user;
+
+  if (role === "EMPLOYER") {
+    if (!companyName || !companyLocation) {
+      throw new Error("Company name and location are required");
+    }
+
+    const company = await prisma.company.create({
+      data: {
+        name: companyName,
+        location: companyLocation,
+        description: companyDescription || null,
+        website: companyWebsite || null,
+      },
     });
 
-
-    if (!["CANDIDATE", "EMPLOYER", "ADMIN"].includes(role)) {
-        throw new Error("Invalid role");
-    }
-    if (existingUser) {
-        throw new Error("User already exists");
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password: hashedPassword,
-            role,
-        },
+    user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        companyId: company.id,
+      },
     });
+  } else {
+    user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+      },
+    });
+  }
 
-    return user;
+  return user;
 };
 
 export const loginUser = async (data: any) => {

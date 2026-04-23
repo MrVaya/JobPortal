@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function CreateJobPage() {
   const router = useRouter();
@@ -106,6 +107,11 @@ export default function CreateJobPage() {
 
   return (
     <main className="p-6 max-w-2xl mx-auto">
+      <div className="mb-6">
+  <Link href="/my-jobs" className="text-blue-600 text-sm">
+    ← Back to My Jobs
+  </Link>
+</div>
       <div className="border rounded-lg p-6 shadow-sm">
         <h1 className="text-2xl font-bold mb-4">Create Job</h1>
 
