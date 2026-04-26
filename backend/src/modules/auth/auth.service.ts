@@ -1,14 +1,14 @@
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import prisma from "../../lib/prisma";
-import { generateToken } from "../../lib/jwt";
-import { sendEmail } from "../../utils/email";
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyToken,
 } from "../../lib/jwt";
-
+import { sendEmail } from "../../utils/email";
+import { AppError } from "../../utils/AppError";
+import { USER_ROLES, TOKEN_EXPIRY } from "../../constants";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 function createSecureToken() {
@@ -27,8 +27,8 @@ export const registerUser = async (data: any) => {
     companyWebsite,
   } = data;
 
-  if (!["CANDIDATE", "EMPLOYER"].includes(role)) {
-    throw new Error("Invalid role");
+ if (![USER_ROLES.CANDIDATE, USER_ROLES.EMPLOYER].includes(role)) {
+    throw new AppError("Invalid role", 400);
   }
 
   const existingUser = await prisma.user.findUnique({
@@ -36,21 +36,21 @@ export const registerUser = async (data: any) => {
   });
 
   if (existingUser) {
-    throw new Error("User already exists");
+    throw new AppError("User already exists", 409);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const emailVerificationToken = createSecureToken();
   const emailVerificationExpires = new Date(
-    Date.now() + 24 * 60 * 60 * 1000
+   Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
   );
 
   let user;
 
-  if (role === "EMPLOYER") {
+  if (role === USER_ROLES.EMPLOYER) {
     if (!companyName || !companyLocation) {
-      throw new Error("Company name and location are required");
+      throw new AppError("Company name and location are required", 400);
     }
 
     const company = await prisma.company.create({
@@ -96,7 +96,7 @@ export const registerUser = async (data: any) => {
     text: `Click this link to verify your email: ${verifyLink}`,
   });
 
-  const { password: _, ...safeUser } = user;
+  const { password: _, refreshToken, ...safeUser } = user;
 
   return safeUser;
 };
@@ -109,13 +109,13 @@ export const loginUser = async (data: any) => {
   });
 
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw new AppError("Invalid credentials", 401);
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
-  if (!isMatch) {
-    throw new Error("Invalid credentials");
+  if (!isPasswordValid) {
+    throw new AppError("Invalid credentials", 401);
   }
 
   const accessToken = generateAccessToken({
@@ -129,12 +129,10 @@ export const loginUser = async (data: any) => {
 
   await prisma.user.update({
     where: { id: user.id },
-    data: {
-      refreshToken,
-    },
+    data: { refreshToken },
   });
 
-  const { password: _, ...safeUser } = user;
+  const { password: _, refreshToken: __, ...safeUser } = user;
 
   return {
     user: safeUser,
@@ -145,7 +143,7 @@ export const loginUser = async (data: any) => {
 
 export const forgotPasswordService = async (email: string) => {
   if (!email) {
-    throw new Error("Email is required");
+    throw new AppError("Email is required", 400);
   }
 
   const user = await prisma.user.findUnique({
@@ -159,7 +157,7 @@ export const forgotPasswordService = async (email: string) => {
   }
 
   const passwordResetToken = createSecureToken();
-  const passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+  const passwordResetExpires = Date.now() + TOKEN_EXPIRY.PASSWORD_RESET_MS
 
   await prisma.user.update({
     where: { email },
@@ -186,8 +184,12 @@ export const resetPasswordService = async (
   token: string,
   password: string
 ) => {
+  if (!token) {
+    throw new AppError("Reset token is required", 400);
+  }
+
   if (!password || password.length < 8) {
-    throw new Error("Password must be at least 8 characters");
+    throw new AppError("Password must be at least 8 characters", 400);
   }
 
   const user = await prisma.user.findFirst({
@@ -200,7 +202,7 @@ export const resetPasswordService = async (
   });
 
   if (!user) {
-    throw new Error("Invalid or expired reset token");
+    throw new AppError("Invalid or expired reset token", 400);
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -211,6 +213,7 @@ export const resetPasswordService = async (
       password: hashedPassword,
       passwordResetToken: null,
       passwordResetExpires: null,
+      refreshToken: null,
     },
   });
 
@@ -220,6 +223,10 @@ export const resetPasswordService = async (
 };
 
 export const verifyEmailService = async (token: string) => {
+  if (!token) {
+    throw new AppError("Verification token is required", 400);
+  }
+
   const user = await prisma.user.findFirst({
     where: {
       emailVerificationToken: token,
@@ -230,7 +237,7 @@ export const verifyEmailService = async (token: string) => {
   });
 
   if (!user) {
-    throw new Error("Invalid or expired verification token");
+    throw new AppError("Invalid or expired verification token", 400);
   }
 
   await prisma.user.update({
@@ -249,7 +256,7 @@ export const verifyEmailService = async (token: string) => {
 
 export const resendVerificationEmailService = async (email: string) => {
   if (!email) {
-    throw new Error("Email is required");
+    throw new AppError("Email is required", 400);
   }
 
   const user = await prisma.user.findUnique({
@@ -263,12 +270,12 @@ export const resendVerificationEmailService = async (email: string) => {
   }
 
   if (user.emailVerified) {
-    throw new Error("Email is already verified");
+    throw new AppError("Email is already verified", 400);
   }
 
   const emailVerificationToken = createSecureToken();
   const emailVerificationExpires = new Date(
-    Date.now() + 24 * 60 * 60 * 1000
+   Date.now() + TOKEN_EXPIRY.EMAIL_VERIFICATION_MS
   );
 
   await prisma.user.update({
@@ -293,10 +300,16 @@ export const resendVerificationEmailService = async (email: string) => {
 };
 
 export const refreshTokenService = async (token: string) => {
-  const decoded = verifyToken(token) as { userId?: string };
+  if (!token) {
+    throw new AppError("Refresh token is required", 401);
+  }
 
-  if (!decoded?.userId) {
-    throw new Error("Invalid refresh token");
+  const decoded = verifyToken(token) as {
+    userId?: string;
+  };
+
+  if (!decoded.userId) {
+    throw new AppError("Invalid refresh token", 401);
   }
 
   const user = await prisma.user.findUnique({
@@ -304,7 +317,7 @@ export const refreshTokenService = async (token: string) => {
   });
 
   if (!user || user.refreshToken !== token) {
-    throw new Error("Invalid refresh token");
+    throw new AppError("Invalid refresh token", 401);
   }
 
   const accessToken = generateAccessToken({
@@ -314,5 +327,22 @@ export const refreshTokenService = async (token: string) => {
 
   return {
     accessToken,
+  };
+};
+
+export const logoutUserService = async (userId: string) => {
+  if (!userId) {
+    throw new AppError("User ID is required", 400);
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      refreshToken: null,
+    },
+  });
+
+  return {
+    message: "Logout successful",
   };
 };

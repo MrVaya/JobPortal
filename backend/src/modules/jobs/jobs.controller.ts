@@ -1,177 +1,210 @@
 import { Request, Response } from "express";
+import prisma from "../../lib/prisma";
 import {
   createJobService,
-  getMyJobsService,
-  getAllJobsService,
   getJobByIdService,
   applyToJobService,
-  getMyApplicationsService,
   getJobApplicantsService,
 } from "./jobs.service";
 import { validateBody } from "../../utils/validate";
-import { createJobSchema, applyToJobSchema } from "../../validations/job.validation";
+import {
+  createJobSchema,
+  applyToJobSchema,
+} from "../../validations/job.validation";
+import {
+  getPagination,
+  getSorting,
+  getPaginationMeta,
+} from "../../utils/pagination";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { sendSuccess } from "../../utils/ApiResponse";
+import { AppError } from "../../utils/AppError";
 
-export const createJob = async (req: any, res: Response) => {
-  try {
-    const validatedData = validateBody(createJobSchema, {
-      ...req.body,
-      salaryMin:
-        req.body.salaryMin !== undefined && req.body.salaryMin !== null
-          ? Number(req.body.salaryMin)
-          : null,
-      salaryMax:
-        req.body.salaryMax !== undefined && req.body.salaryMax !== null
-          ? Number(req.body.salaryMax)
-          : null,
-    });
+export const createJob = asyncHandler(async (req: any, res: Response) => {
+  const validatedData = validateBody(createJobSchema, {
+    ...req.body,
+    salaryMin:
+      req.body.salaryMin !== undefined && req.body.salaryMin !== ""
+        ? Number(req.body.salaryMin)
+        : null,
+    salaryMax:
+      req.body.salaryMax !== undefined && req.body.salaryMax !== ""
+        ? Number(req.body.salaryMax)
+        : null,
+  });
 
-    const job = await createJobService(validatedData, req.user.userId);
+  const job = await createJobService(validatedData, req.user.userId);
 
-    return res.status(201).json({
-      success: true,
-      message: "Job created successfully",
-      job,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to create job",
-    });
+  return sendSuccess({
+    res,
+    statusCode: 201,
+    message: "Job created successfully",
+    data: { job },
+  });
+});
+
+export const getAllJobs = asyncHandler(async (req: Request, res: Response) => {
+  const { page, limit, skip } = getPagination(req.query);
+
+  const orderBy = getSorting(
+    req.query,
+    ["createdAt", "title", "location", "jobType"],
+    "createdAt"
+  );
+
+  const [jobs, total] = await Promise.all([
+    prisma.job.findMany({
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        company: true,
+      },
+    }),
+    prisma.job.count(),
+  ]);
+
+  return sendSuccess({
+    res,
+    message: "Jobs retrieved successfully",
+    data: {
+      jobs,
+      pagination: getPaginationMeta(total, page, limit),
+    },
+  });
+});
+
+export const getMyJobs = asyncHandler(async (req: any, res: Response) => {
+  const { page, limit, skip } = getPagination(req.query);
+
+  const orderBy = getSorting(
+    req.query,
+    ["createdAt", "title", "location", "jobType"],
+    "createdAt"
+  );
+
+  const where = {
+    createdById: req.user.userId,
+  };
+
+  const [jobs, total] = await Promise.all([
+    prisma.job.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        company: true,
+      },
+    }),
+    prisma.job.count({ where }),
+  ]);
+
+  return sendSuccess({
+    res,
+    message: "My jobs retrieved successfully",
+    data: {
+      jobs,
+      pagination: getPaginationMeta(total, page, limit),
+    },
+  });
+});
+
+export const getJobById = asyncHandler(async (req: Request, res: Response) => {
+  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+  const job = await getJobByIdService(id);
+
+  if (!job) {
+    throw new AppError("Job not found", 404);
   }
-};
 
-export const getMyJobs = async (req: any, res: Response) => {
-    try {
-        const jobs = await getMyJobsService(req.user.userId);
+  return sendSuccess({
+    res,
+    message: "Job retrieved successfully",
+    data: { job },
+  });
+});
 
-        return res.status(200).json({
-            success: true,
-          message: "Employer jobs retrieved successfully",
-            jobs,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-          message: error.message || "Failed to retrieve employer jobs",
-        });
+export const applyToJob = asyncHandler(async (req: any, res: Response) => {
+  const file = req.file;
+
+  const validatedData = validateBody(applyToJobSchema, {
+    coverLetter: req.body.coverLetter,
+  });
+
+  const application = await applyToJobService(
+    req.params.jobId,
+    req.user.userId,
+    {
+      coverLetter: validatedData.coverLetter,
+      resumeUrl: file ? `/uploads/resumes/${file.filename}` : null,
+      resumeFileName: file ? file.originalname : null,
+      resumeFileType: file ? file.mimetype : null,
     }
-};
+  );
 
-export const getAllJobs = async (req: Request, res: Response) => {
-    try {
-        const jobs = await getAllJobsService(req.query);
+  return sendSuccess({
+    res,
+    statusCode: 201,
+    message: "Application submitted successfully",
+    data: { application },
+  });
+});
 
-        return res.status(200).json({
-            success: true,
-          message: "Jobs retrieved successfully",
-            jobs,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-          message: error.message || "Failed to retrieve jobs",
-        });
-    }
-};
+export const getMyApplications = asyncHandler(
+  async (req: any, res: Response) => {
+    const { page, limit, skip } = getPagination(req.query);
 
-export const getJobById = async (req: Request, res: Response) => {
-    try {
-        const id = req.params.id;
-
-        if (Array.isArray(id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid job ID",
-            });
-        }
-
-        const job = await getJobByIdService(id);
-
-        if (!job) {
-            return res.status(404).json({
-                success: false,
-                message: "Job not found",
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-          message: "Job retrieved successfully",
-            job,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-          message: error.message || "Failed to retrieve job details",
-        });
-    }
-};
-
-export const applyToJob = async (req: any, res: Response) => {
-  try {
-    const file = req.file;
-
-    const validatedData = validateBody(applyToJobSchema, {
-      coverLetter: req.body.coverLetter,
-    });
-
-    const application = await applyToJobService(
-      req.params.jobId,
-      req.user.userId,
-      {
-        coverLetter: validatedData.coverLetter,
-        resumeUrl: file ? `/uploads/resumes/${file.filename}` : null,
-        resumeFileName: file ? file.originalname : null,
-        resumeFileType: file ? file.mimetype : null,
-      }
+    const orderBy = getSorting(
+      req.query,
+      ["appliedAt", "status"],
+      "appliedAt"
     );
 
-    return res.status(201).json({
-      success: true,
-      message: "Application submitted successfully",
-      application,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to submit job application",
+    const where = {
+      candidateId: req.user.userId,
+    };
+
+    const [applications, total] = await Promise.all([
+      prisma.application.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+        include: {
+          job: {
+            include: {
+              company: true,
+            },
+          },
+        },
+      }),
+      prisma.application.count({ where }),
+    ]);
+
+    return sendSuccess({
+      res,
+      message: "Applications retrieved successfully",
+      data: {
+        applications,
+        pagination: getPaginationMeta(total, page, limit),
+      },
     });
   }
-};
+);
 
-export const getMyApplications = async (req: any, res: Response) => {
-    try {
-        const applications = await getMyApplicationsService(req.user.userId);
+export const getJobApplicants = asyncHandler(
+  async (req: any, res: Response) => {
+    const applicants = await getJobApplicantsService(
+      req.params.jobId,
+      req.user.userId
+    );
 
-        return res.status(200).json({
-            success: true,
-          message: "Applications retrieved successfully",
-            applications,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-          message: error.message || "Failed to retrieve applications",
-        });
-    }
-};
-
-export const getJobApplicants = async (req: any, res: Response) => {
-    try {
-        const applicants = await getJobApplicantsService(
-            req.params.jobId,
-            req.user.userId
-        );
-
-        return res.status(200).json({
-            success: true,
-          message: "Job applicants retrieved successfully",
-            applicants,
-        });
-    } catch (error: any) {
-        return res.status(400).json({
-            success: false,
-          message: error.message || "Failed to retrieve job applicants",
-        });
-    }
-};
+    return sendSuccess({
+      res,
+      message: "Job applicants retrieved successfully",
+      data: { applicants },
+    });
+  }
+);

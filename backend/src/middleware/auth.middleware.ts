@@ -1,5 +1,6 @@
 import { Response, NextFunction } from "express";
 import { verifyToken } from "../lib/jwt";
+import { COOKIE_NAMES } from "../constants";
 
 export const authMiddleware = (
   req: any,
@@ -7,7 +8,7 @@ export const authMiddleware = (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies?.accessToken;
+    const token = req.cookies?.[COOKIE_NAMES.ACCESS_TOKEN]
 
     if (!token) {
       return res.status(401).json({
