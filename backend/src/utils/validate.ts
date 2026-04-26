@@ -1,12 +1,15 @@
 import { ZodSchema } from "zod";
 
-export const validateBody = <T>(schema: ZodSchema<T>, data: unknown): T => {
-  const result = schema.safeParse(data);
+export function validateBody<T>(schema: ZodSchema<T>, body: unknown): T {
+  const result = schema.safeParse(body);
 
   if (!result.success) {
-    const firstError = result.error.issues[0];
-    throw new Error(firstError?.message || "Invalid request data");
+    const message = result.error.issues
+      .map((issue) => issue.message)
+      .join(", ");
+
+    throw new Error(message);
   }
 
   return result.data;
-};
+}

@@ -1,118 +1,172 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useAuth } from "@/components/AuthProvider";
+import { apiFetch } from "@/lib/api";
 
-type Job = {
-  id: string;
-  title: string;
-  location: string;
-  jobType: string;
-};
+export default function CreateJobPage() {
+  return (
+    <ProtectedRoute allowedRoles={["EMPLOYER"]} redirectTo="/jobs">
+      <CreateJobContent />
+    </ProtectedRoute>
+  );
+}
 
-export default function MyJobsPage() {
+function CreateJobContent() {
   const router = useRouter();
+  const { user } = useAuth();
 
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    jobType: "Full-time",
+    salaryMin: "",
+    salaryMax: "",
+  });
+
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const [authorized, setAuthorized] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    try {
+      setLoading(true);
+      setMessage("");
 
-    if (role !== "EMPLOYER") {
-      router.push("/jobs");
-      return;
-    }
+      const res = await apiFetch("/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          location: form.location,
+          jobType: form.jobType,
+          salaryMin: form.salaryMin ? Number(form.salaryMin) : null,
+          salaryMax: form.salaryMax ? Number(form.salaryMax) : null,
+        }),
+      });
 
-    setAuthorized(true);
-    setCheckingAuth(false);
-  }, [router]);
+      const data = await res.json();
 
-  useEffect(() => {
-    if (!authorized) return;
+      if (data.success) {
+        setMessage("Job created successfully.");
 
-    const fetchJobs = async () => {
-      try {
-        const token = localStorage.getItem("token");
-
-        const res = await fetch("http://localhost:5000/api/jobs/my-jobs", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-          setJobs(data.jobs || []);
-        } else {
-          setMessage(data.message || "Failed to load jobs.");
-        }
-      } catch (error) {
-        setMessage("Something went wrong.");
-      } finally {
-        setLoading(false);
+        setTimeout(() => {
+          router.push("/my-jobs");
+        }, 1000);
+      } else {
+        setMessage(data.message || "Failed to create job.");
       }
-    };
-
-    fetchJobs();
-  }, [authorized]);
-
-  if (checkingAuth) {
-    return <main className="p-6">Checking access...</main>;
-  }
-
-  if (!authorized) {
-    return null;
-  }
+    } catch {
+      setMessage("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main className="p-6 max-w-4xl mx-auto">
-   <div className="mb-6 flex items-center justify-between">
-  <div>
-    <h1 className="text-2xl font-bold">My Jobs</h1>
-    <p className="text-gray-600 mt-1">
-      Manage the jobs you have posted.
-    </p>
-  </div>
+    <main className="mx-auto max-w-2xl p-6">
+      <div className="mb-6">
+        <Link href="/my-jobs" className="text-blue-600 text-sm">
+          ← Back to My Jobs
+        </Link>
+      </div>
 
-  <Link
-    href="/create-job"
-    className="bg-black text-white px-4 py-2 rounded"
-  >
-    Create Job
-  </Link>
-</div>
+      <div className="rounded-lg border p-6 shadow-sm">
+        <h1 className="mb-4 text-2xl font-bold">Create Job</h1>
 
-      {loading && <p>Loading...</p>}
-      {!loading && message && <p>{message}</p>}
+        {user && (
+          <p className="mb-4 text-sm text-gray-600">
+            Creating job as {user.name}
+          </p>
+        )}
 
-      <div className="space-y-4">
-        {jobs.map((job) => (
-          <div key={job.id} className="border rounded-lg p-4">
-            <h2 className="font-semibold text-lg">{job.title}</h2>
-            <p className="text-gray-600">{job.location}</p>
-            <p>{job.jobType}</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            placeholder="Job title"
+            className="w-full rounded border px-3 py-2"
+            required
+          />
 
-            <Link
-              href={`/jobs/${job.id}/applicants`}
-              className="inline-block mt-3 text-blue-600"
-            >
-              View Applicants
-            </Link>
-          </div>
-        ))}
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Job description"
+            className="h-32 w-full rounded border px-3 py-2"
+            required
+          />
+
+          <input
+            type="text"
+            name="location"
+            value={form.location}
+            onChange={handleChange}
+            placeholder="Location"
+            className="w-full rounded border px-3 py-2"
+            required
+          />
+
+          <select
+            name="jobType"
+            value={form.jobType}
+            onChange={handleChange}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="Full-time">Full-time</option>
+            <option value="Part-time">Part-time</option>
+            <option value="Remote">Remote</option>
+          </select>
+
+          <input
+            type="number"
+            name="salaryMin"
+            value={form.salaryMin}
+            onChange={handleChange}
+            placeholder="Minimum salary"
+            className="w-full rounded border px-3 py-2"
+          />
+
+          <input
+            type="number"
+            name="salaryMax"
+            value={form.salaryMax}
+            onChange={handleChange}
+            placeholder="Maximum salary"
+            className="w-full rounded border px-3 py-2"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          >
+            {loading ? "Creating..." : "Create Job"}
+          </button>
+
+          {message && (
+            <p className="text-sm text-gray-700">{message}</p>
+          )}
+        </form>
       </div>
     </main>
   );

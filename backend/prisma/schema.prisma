@@ -15,6 +15,14 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
+  emailVerified            Boolean   @default(false)
+  emailVerificationToken   String?
+  emailVerificationExpires DateTime?
+
+  passwordResetToken       String?
+  passwordResetExpires     DateTime?
+  refreshToken String?
+
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
@@ -49,7 +57,7 @@ model Company {
 }
 
 model Job {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   jobCode     String?   @unique
   title       String
   description String
