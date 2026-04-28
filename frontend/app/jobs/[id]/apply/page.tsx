@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function ApplyPage() {
   const params = useParams();
   const router = useRouter();
+  const { isAuthenticated, isLoading, role } = useAuth();
   const jobId = params.id as string;
 
   const [coverLetter, setCoverLetter] = useState("");
@@ -14,14 +16,10 @@ export default function ApplyPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [authorized, setAuthorized] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    if (isLoading) return;
 
-    if (!token) {
+    if (!isAuthenticated) {
       router.push("/login");
       return;
     }
@@ -30,22 +28,12 @@ export default function ApplyPage() {
       router.push("/my-jobs");
       return;
     }
-
-    setAuthorized(true);
-    setCheckingAuth(false);
-  }, [router]);
+  }, [isLoading, isAuthenticated, role, router]);
 
   const handleApply = async () => {
     try {
       setLoading(true);
       setMessage("");
-
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setMessage("No token found. Please log in first.");
-        return;
-      }
 
       const formData = new FormData();
       formData.append("coverLetter", coverLetter);
@@ -56,9 +44,7 @@ export default function ApplyPage() {
 
       const res = await fetch(`http://localhost:5000/api/jobs/${jobId}/apply`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
         body: formData,
       });
 
@@ -78,11 +64,11 @@ export default function ApplyPage() {
     }
   };
 
-  if (checkingAuth) {
+  if (isLoading) {
     return <main className="p-6">Checking access...</main>;
   }
 
-  if (!authorized) {
+  if (!isAuthenticated || role !== "CANDIDATE") {
     return null;
   }
 

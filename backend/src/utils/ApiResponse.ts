@@ -1,5 +1,6 @@
 import { Response } from "express";
 
+
 type SuccessOptions = {
   res: Response;
   message?: string;

@@ -19,6 +19,15 @@ import {
 import { asyncHandler } from "../../utils/asyncHandler";
 import { sendSuccess } from "../../utils/ApiResponse";
 import { AppError } from "../../utils/AppError";
+import { uploadToCloudinary } from "../../utils/cloudinary";
+import { generateSignedResumeUrl } from "../../utils/cloudinary";
+import { generateSignedResumeDownloadUrl } from "../../utils/cloudinary";
+import { updateApplicationStatusService } from "./jobs.service";
+ 
+
+
+
+
 
 export const createJob = asyncHandler(async (req: any, res: Response) => {
   const validatedData = validateBody(createJobSchema, {
@@ -133,14 +142,21 @@ export const applyToJob = asyncHandler(async (req: any, res: Response) => {
     coverLetter: req.body.coverLetter,
   });
 
+  let uploadedResume: { url?: string; publicId?: string } | null = null;
+
+  if (file) {
+    uploadedResume = await uploadToCloudinary(file);
+  }
+
   const application = await applyToJobService(
     req.params.jobId,
     req.user.userId,
     {
       coverLetter: validatedData.coverLetter,
-      resumeUrl: file ? `/uploads/resumes/${file.filename}` : null,
-      resumeFileName: file ? file.originalname : null,
-      resumeFileType: file ? file.mimetype : null,
+      resumeUrl: uploadedResume?.url || null,
+      resumePublicId: uploadedResume?.publicId || null,
+      resumeFileName: file?.originalname || null,
+      resumeFileType: file?.mimetype || null,
     }
   );
 
@@ -205,6 +221,67 @@ export const getJobApplicants = asyncHandler(
       res,
       message: "Job applicants retrieved successfully",
       data: { applicants },
+    });
+  }
+);
+
+export const getApplicationResume = asyncHandler(
+  async (req: any, res: Response) => {
+    const { jobId, applicationId } = req.params;
+    
+
+    const application = await prisma.application.findFirst({
+      where: {
+        id: applicationId,
+        jobId,
+        job: {
+          createdById: req.user.userId,
+        },
+      },
+      select: {
+        resumePublicId: true,
+        resumeFileName: true,
+      },
+    });
+
+    if (!application) {
+      throw new AppError("Application not found or unauthorized", 404);
+    }
+
+    if (!application.resumePublicId) {
+      throw new AppError("Resume not found", 400);
+    }
+
+    const url = generateSignedResumeDownloadUrl(application.resumePublicId);
+    
+
+    return sendSuccess({
+      res,
+      message: "Resume URL generated successfully",
+      data: {
+        url,
+        fileName: application.resumeFileName,
+      },
+    });
+  }
+);
+
+export const updateApplicationStatus = asyncHandler(
+  async (req: any, res: Response) => {
+    const { jobId, applicationId } = req.params;
+    const { status } = req.body;
+
+    const application = await updateApplicationStatusService(
+      jobId,
+      applicationId,
+      req.user.userId,
+      status
+    );
+
+    return sendSuccess({
+      res,
+      message: "Application status updated successfully",
+      data: { application },
     });
   }
 );

@@ -157,7 +157,9 @@ export const forgotPasswordService = async (email: string) => {
   }
 
   const passwordResetToken = createSecureToken();
-  const passwordResetExpires = Date.now() + TOKEN_EXPIRY.PASSWORD_RESET_MS
+  const passwordResetExpires = new Date(
+  Date.now() + TOKEN_EXPIRY.PASSWORD_RESET_MS
+);
 
   await prisma.user.update({
     where: { email },

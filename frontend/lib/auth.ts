@@ -2,9 +2,7 @@ import { AuthUser, LoginPayload } from "@/types/auth";
 
 const API_URL = "http://localhost:5000/api";
 
-export async function loginUser(
-  data: LoginPayload
-): Promise<AuthUser> {
+export async function loginUser(data: LoginPayload): Promise<AuthUser> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     credentials: "include",
@@ -20,7 +18,7 @@ export async function loginUser(
     throw new Error(result.message || "Login failed");
   }
 
-  return result.user;
+  return result.data.user;
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -29,32 +27,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     credentials: "include",
   });
 
-  if (res.status === 401) {
-    const refreshed = await refreshSession();
+  if (!res.ok) return null;
 
-    if (!refreshed) {
-      return null;
-    }
+  const result = await res.json();
 
-    const retryRes = await fetch(`${API_URL}/auth/me`, {
-      method: "GET",
-      credentials: "include",
-    });
-
-    if (!retryRes.ok) {
-      return null;
-    }
-
-    const retryData = await retryRes.json();
-    return retryData.user;
-  }
-
-  if (!res.ok) {
-    return null;
-  }
-
-  const data = await res.json();
-  return data.user;
+  return result.data.user;
 }
 
 export async function refreshSession(): Promise<boolean> {

@@ -21,7 +21,7 @@ model User {
 
   passwordResetToken       String?
   passwordResetExpires     DateTime?
-  refreshToken String?
+  refreshToken             String?
 
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
@@ -29,6 +29,11 @@ model User {
   candidateProfile CandidateProfile?
   applications     Application[]
   jobs             Job[] @relation("PostedJobs")
+
+  @@index([role])
+  @@index([companyId])
+  @@index([emailVerificationToken])
+  @@index([passwordResetToken])
 }
 
 model CandidateProfile {
@@ -75,6 +80,14 @@ model Job {
   createdBy User    @relation("PostedJobs", fields: [createdById], references: [id])
 
   applications Application[]
+
+  @@index([createdById])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([location])
+  @@index([jobType])
+  @@index([status, createdAt])
 }
 
 model Application {
@@ -83,6 +96,7 @@ model Application {
   candidateId    String
   coverLetter    String?
   resumeUrl      String?
+  resumePublicId String?
   resumeFileName String?
   resumeFileType String?
   status         ApplicationStatus @default(PENDING)
@@ -92,6 +106,12 @@ model Application {
   candidate User @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, candidateId])
+  @@index([jobId])
+  @@index([candidateId])
+  @@index([status])
+  @@index([appliedAt])
+  @@index([candidateId, appliedAt])
+  @@index([jobId, appliedAt])
 }
 
 enum Role {

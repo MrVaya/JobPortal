@@ -19,7 +19,13 @@ app.get("/api/protected", authMiddleware, (req: any, res) => {
 });
 app.use(cookieParser());
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/", (_req, res) => {

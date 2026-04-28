@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function Navbar() {
-  const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { user, role, isAuthenticated, logout, isLoading } = useAuth();
 
   return (
     <nav className="border-b bg-white px-6 py-4">
@@ -22,17 +22,28 @@ export default function Navbar() {
             <span className="text-sm text-gray-500">Loading...</span>
           ) : isAuthenticated && user ? (
             <>
-              <Link href="/my-applications" className="text-sm hover:text-blue-600">
-                My Applications
-              </Link>
+              {role === "EMPLOYER" && (
+                <>
+                  <Link href="/create-job" className="text-sm hover:text-blue-600">
+                    Post Job
+                  </Link>
 
-              <Link href="/my-jobs" className="text-sm hover:text-blue-600">
-                My Jobs
-              </Link>
+                  <Link href="/my-jobs" className="text-sm hover:text-blue-600">
+                    My Jobs
+                  </Link>
+                </>
+              )}
 
-              <span className="text-sm text-gray-600">
-                {user.name}
-              </span>
+              {role === "CANDIDATE" && (
+                <Link
+                  href="/my-applications"
+                  className="text-sm hover:text-blue-600"
+                >
+                  My Applications
+                </Link>
+              )}
+
+              <span className="text-sm text-gray-600">{user.name}</span>
 
               <button
                 onClick={logout}

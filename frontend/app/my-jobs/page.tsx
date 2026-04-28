@@ -1,173 +1,120 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 
-export default function CreateJobPage() {
+type Job = {
+  id: string;
+  title: string;
+  location: string;
+  jobType: string;
+  createdAt?: string;
+};
+
+export default function MyJobsPage() {
   return (
     <ProtectedRoute allowedRoles={["EMPLOYER"]} redirectTo="/jobs">
-      <CreateJobContent />
+      <MyJobsContent />
     </ProtectedRoute>
   );
 }
 
-function CreateJobContent() {
-  const router = useRouter();
-  const { user } = useAuth();
-
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    location: "",
-    jobType: "Full-time",
-    salaryMin: "",
-    salaryMax: "",
-  });
-
+function MyJobsContent() {
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
+  useEffect(() => {
+    const fetchMyJobs = async () => {
+      try {
+        setLoading(true);
+        setMessage("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+        const res = await apiFetch(
+          "/jobs/my-jobs?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+          {
+            method: "GET",
+          }
+        );
 
-    try {
-      setLoading(true);
-      setMessage("");
+        const data = await res.json();
 
-      const res = await apiFetch("/jobs", {
-        method: "POST",
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          location: form.location,
-          jobType: form.jobType,
-          salaryMin: form.salaryMin ? Number(form.salaryMin) : null,
-          salaryMax: form.salaryMax ? Number(form.salaryMax) : null,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setMessage("Job created successfully.");
-
-        setTimeout(() => {
-          router.push("/my-jobs");
-        }, 1000);
-      } else {
-        setMessage(data.message || "Failed to create job.");
+        if (data.success) {
+          setJobs(data.data?.jobs || []);
+        } else {
+          setMessage(data.message || "Failed to load jobs.");
+        }
+      } catch {
+        setMessage("Something went wrong while loading jobs.");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setMessage("Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchMyJobs();
+  }, []);
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <div className="mb-6">
-        <Link href="/my-jobs" className="text-blue-600 text-sm">
-          ← Back to My Jobs
+    <main className="mx-auto max-w-4xl p-6">
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">My Jobs</h1>
+          <p className="mt-1 text-gray-600">
+            Manage your posted jobs and review applicants.
+          </p>
+        </div>
+
+        <Link
+          href="/create-job"
+          className="rounded bg-black px-4 py-2 text-white"
+        >
+          Post Job
         </Link>
       </div>
 
-      <div className="rounded-lg border p-6 shadow-sm">
-        <h1 className="mb-4 text-2xl font-bold">Create Job</h1>
+      {loading && <p>Loading jobs...</p>}
 
-        {user && (
-          <p className="mb-4 text-sm text-gray-600">
-            Creating job as {user.name}
-          </p>
-        )}
+      {!loading && message && (
+        <p className="rounded border border-red-200 bg-red-50 p-3 text-red-700">
+          {message}
+        </p>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            name="title"
-            value={form.title}
-            onChange={handleChange}
-            placeholder="Job title"
-            className="w-full rounded border px-3 py-2"
-            required
-          />
+      {!loading && !message && jobs.length === 0 && (
+        <div className="rounded-lg border p-6 text-center">
+          <p className="text-gray-600">You have not posted any jobs yet.</p>
 
-          <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            placeholder="Job description"
-            className="h-32 w-full rounded border px-3 py-2"
-            required
-          />
-
-          <input
-            type="text"
-            name="location"
-            value={form.location}
-            onChange={handleChange}
-            placeholder="Location"
-            className="w-full rounded border px-3 py-2"
-            required
-          />
-
-          <select
-            name="jobType"
-            value={form.jobType}
-            onChange={handleChange}
-            className="w-full rounded border px-3 py-2"
+          <Link
+            href="/create-job"
+            className="mt-4 inline-block rounded bg-black px-4 py-2 text-white"
           >
-            <option value="Full-time">Full-time</option>
-            <option value="Part-time">Part-time</option>
-            <option value="Remote">Remote</option>
-          </select>
+            Create your first job
+          </Link>
+        </div>
+      )}
 
-          <input
-            type="number"
-            name="salaryMin"
-            value={form.salaryMin}
-            onChange={handleChange}
-            placeholder="Minimum salary"
-            className="w-full rounded border px-3 py-2"
-          />
+      {!loading && jobs.length > 0 && (
+        <div className="space-y-4">
+          {jobs.map((job) => (
+            <div key={job.id} className="rounded-lg border p-4 shadow-sm">
+              <h2 className="text-lg font-semibold">{job.title}</h2>
+              <p className="text-gray-600">{job.location}</p>
+              <p className="text-sm text-gray-500">{job.jobType}</p>
 
-          <input
-            type="number"
-            name="salaryMax"
-            value={form.salaryMax}
-            onChange={handleChange}
-            placeholder="Maximum salary"
-            className="w-full rounded border px-3 py-2"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-          >
-            {loading ? "Creating..." : "Create Job"}
-          </button>
-
-          {message && (
-            <p className="text-sm text-gray-700">{message}</p>
-          )}
-        </form>
-      </div>
+              <div className="mt-4 flex gap-3">
+                <Link
+                  href={`/jobs/${job.id}/applicants`}
+                  className="rounded bg-black px-4 py-2 text-white"
+                >
+                  View Applicants
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

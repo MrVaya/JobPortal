@@ -1,6 +1,5 @@
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../lib/jwt";
-import { COOKIE_NAMES } from "../constants";
 
 export const authMiddleware = (
   req: any,
@@ -8,12 +7,24 @@ export const authMiddleware = (
   next: NextFunction
 ) => {
   try {
-    const token = req.cookies?.[COOKIE_NAMES.ACCESS_TOKEN]
+    let token: string | undefined;
+
+    // 1. Try HTTP-only cookie
+    token = req.cookies?.accessToken;
+
+    // 2. Fallback to Authorization header
+    if (!token) {
+      const authHeader = req.headers.authorization;
+
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.split(" ")[1];
+      }
+    }
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Access token is missing",
+        message: "Authentication required",
       });
     }
 
@@ -25,7 +36,7 @@ export const authMiddleware = (
   } catch {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired access token",
+      message: "Invalid or expired token",
     });
   }
 };

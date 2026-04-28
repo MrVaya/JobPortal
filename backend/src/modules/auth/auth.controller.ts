@@ -27,7 +27,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const result = await loginUser(req.body);
 
-  res.cookie(COOKIE_NAMES.ACCESS_TOKEN, result.accessToken, {
+ res.cookie(COOKIE_NAMES.ACCESS_TOKEN, result.accessToken, {
     httpOnly: true,
     secure: false,
     sameSite: "lax",
@@ -41,11 +41,19 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
-  return sendSuccess({
-    res,
-    message: "Login successful",
-    data: { user: result.user },
-  });
+ const isMobile = req.headers["x-client-type"] === "mobile";
+
+return sendSuccess({
+  res,
+  message: "Login successful",
+  data: {
+    user: result.user,
+    ...(isMobile && {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }),
+  },
+});
 });
 
 export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
