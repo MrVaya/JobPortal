@@ -1,4 +1,6 @@
 import prisma from "../../lib/prisma";
+import { ApplicationStatus } from "@prisma/client";
+import { AppError } from "../../utils/AppError";
 
 export const createJobService = async (data: any, userId: string) => {
     const {
@@ -166,6 +168,7 @@ export const applyToJobService = async (
     resumeUrl: data?.resumeUrl,
     resumeFileName: data?.resumeFileName,
     resumeFileType: data?.resumeFileType,
+    resumePublicId: data.resumePublicId,
   },
 });
 
@@ -199,4 +202,51 @@ export const getJobApplicantsService = async (
             appliedAt: "desc",
         },
     });
+};
+
+export const updateApplicationStatusService = async (
+  jobId: string,
+  applicationId: string,
+  employerId: string,
+  status: ApplicationStatus
+) => {
+  const application = await prisma.application.findFirst({
+    where: {
+      id: applicationId,
+      jobId,
+      job: {
+        createdById: employerId,
+      },
+    },
+  });
+
+  if (!application) {
+    throw new AppError("Application not found or unauthorized", 404);
+  }
+
+  const updatedApplication = await prisma.application.update({
+    where: {
+      id: applicationId,
+    },
+    data: {
+      status,
+    },
+    include: {
+      candidate: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      job: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
+    },
+  });
+
+  return updatedApplication;
 };

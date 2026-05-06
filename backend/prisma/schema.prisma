@@ -15,12 +15,25 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
+  emailVerified            Boolean   @default(false)
+  emailVerificationToken   String?
+  emailVerificationExpires DateTime?
+
+  passwordResetToken       String?
+  passwordResetExpires     DateTime?
+  refreshToken             String?
+
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
 
   candidateProfile CandidateProfile?
   applications     Application[]
   jobs             Job[] @relation("PostedJobs")
+
+  @@index([role])
+  @@index([companyId])
+  @@index([emailVerificationToken])
+  @@index([passwordResetToken])
 }
 
 model CandidateProfile {
@@ -49,7 +62,7 @@ model Company {
 }
 
 model Job {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   jobCode     String?   @unique
   title       String
   description String
@@ -67,6 +80,14 @@ model Job {
   createdBy User    @relation("PostedJobs", fields: [createdById], references: [id])
 
   applications Application[]
+
+  @@index([createdById])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([location])
+  @@index([jobType])
+  @@index([status, createdAt])
 }
 
 model Application {
@@ -75,6 +96,7 @@ model Application {
   candidateId    String
   coverLetter    String?
   resumeUrl      String?
+  resumePublicId String?
   resumeFileName String?
   resumeFileType String?
   status         ApplicationStatus @default(PENDING)
@@ -84,6 +106,12 @@ model Application {
   candidate User @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   @@unique([jobId, candidateId])
+  @@index([jobId])
+  @@index([candidateId])
+  @@index([status])
+  @@index([appliedAt])
+  @@index([candidateId, appliedAt])
+  @@index([jobId, appliedAt])
 }
 
 enum Role {

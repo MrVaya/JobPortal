@@ -1,117 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
+import Link from "next/link";
 
 export default function LoginPage() {
-    const router = useRouter();
+  const router = useRouter();
+  const { login, error, isLoading } = useAuth();
 
-    const [form, setForm] = useState({
-        email: "",
-        password: "",
-    });
+  const [email, setEmail] = useState("demo@gmail.com");
+  const [password, setPassword] = useState("password123");
 
-    const [message, setMessage] = useState("");
-    const [loading, setLoading] = useState(false);
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
-    };
+    await login({ email, password });
+    router.push("/");
+  }
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow"
+      >
+        <h1 className="mb-6 text-2xl font-bold">Login</h1>
 
-        try {
-            setLoading(true);
-            setMessage("");
+        <div className="mb-4">
+          <label htmlFor="email" className="mb-1 block text-sm font-medium">
+            Email
+          </label>
 
-            const res = await fetch("http://localhost:5000/api/auth/login", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(form),
-            });
+          <input
+            id="email"
+            type="email"
+            className="w-full rounded border px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-            const data = await res.json();
+        <div className="mb-4">
+          <label htmlFor="password" className="mb-1 block text-sm font-medium">
+            Password
+          </label>
 
-            if (data.success) {
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("role", data.user.role);
-window.dispatchEvent(new Event("auth-changed"));
+          <input
+            id="password"
+            type="password"
+            className="w-full rounded border px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
 
-                setMessage("Login successful.");
+          <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+  Forgot password?
+</Link>
+        </div>
 
-                if (data.user.role === "EMPLOYER") {
-                    router.push("/my-jobs");
-                } else {
-                    router.push("/jobs");
-                }
-            } else {
-                setMessage(data.message || "Login failed.");
-            }
-        } catch (error) {
-            setMessage("Something went wrong.");
-        } finally {
-            setLoading(false);
-        }
-    };
+        {error && (
+          <p className="mb-4 rounded bg-red-100 p-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
 
-    const handleLogout = () => {
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-
-  window.dispatchEvent(new Event("auth-changed"));
-
-  router.push("/");
-};
-
-    return (
-        <main className="p-6 max-w-md mx-auto">
-            <div className="border rounded-lg p-6 shadow-sm">
-                <h1 className="text-2xl font-bold mb-4">Login</h1>
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                        <label className="block mb-1 font-medium">Email</label>
-                        <input
-                            name="email"
-                            type="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            className="w-full border rounded px-3 py-2"
-                            placeholder="Enter your email"
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block mb-1 font-medium">Password</label>
-                        <input
-                            name="password"
-                            type="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            className="w-full border rounded px-3 py-2"
-                            placeholder="Enter your password"
-                            required
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-black text-white py-2 rounded disabled:opacity-50"
-                    >
-                        {loading ? "Logging in..." : "Login"}
-                    </button>
-                </form>
-
-                {message && <p className="mt-4 text-sm">{message}</p>}
-            </div>
-        </main>
-    );
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          {isLoading ? "Logging in..." : "Login"}
+        </button>
+      </form>
+    </main>
+  );
 }

@@ -48,16 +48,18 @@ export default function JobsPage() {
 
       const url = `http://localhost:5000/api/jobs${
         params.toString() ? `?${params.toString()}` : ""
+        
       }`;
 
-      const res = await fetch(url, {
-        cache: "no-store",
-      });
+     const res = await fetch("http://localhost:5000/api/jobs", {
+  method: "GET",
+  credentials: "include",
+});
 
-      const data = await res.json();
+const data = await res.json();
 
       if (data.success) {
-        setJobs(data.jobs || []);
+        setJobs(data.data?.jobs || []);
       } else {
         setJobs([]);
         setMessage(data.message || "Failed to load jobs.");

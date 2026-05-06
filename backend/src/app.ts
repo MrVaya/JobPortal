@@ -4,6 +4,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import { authMiddleware } from "./middleware/auth.middleware";
 import path from "path";
 import { requireRole } from "./middleware/role.middleware";
+import cookieParser from "cookie-parser";
 
 import jobRoutes from "./modules/jobs/jobs.routes";
 const app = express();
@@ -16,8 +17,15 @@ app.get("/api/protected", authMiddleware, (req: any, res) => {
         user: req.user,
     });
 });
+app.use(cookieParser());
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.get("/", (_req, res) => {

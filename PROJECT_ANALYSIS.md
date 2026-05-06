@@ -1,566 +1,356 @@
-# Job Portal - Complete Project Analysis
-
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [Project Structure](#project-structure)
-3. [Frontend Application](#frontend-application)
-4. [Backend Application](#backend-application)
-5. [Database Design](#database-design)
-6. [How the Application Works](#how-the-application-works)
-7. [Key Features](#key-features)
-8. [Technology Stack](#technology-stack)
-9. [Getting Started](#getting-started)
-
----
-
-## Project Overview
-
-**Job Portal** is a web application that connects job seekers (Candidates) with employers. It is a full-stack application built with modern web technologies.
-
-### What Does It Do?
-
-- **For Candidates**: People looking for jobs can register, create profiles, search for job listings, and apply to jobs they are interested in.
-- **For Employers**: Companies can register, post job openings, manage applications, and review candidate profiles.
-- **For Admins**: Site administrators can manage users and content (future feature).
-
-Think of it like **LinkedIn or Indeed** - a platform where employers post jobs and job seekers apply for them.
-
----
-
-## Project Structure
-
-```
-Job-Portal/
-├── backend/                 # Server-side code (Node.js + Express)
-│   ├── src/
-│   │   ├── app.ts          # Main app setup
-│   │   ├── server.ts       # Server startup
-│   │   ├── controllers/    # API request handlers
-│   │   ├── lib/            # Helper functions (JWT, database)
-│   │   ├── middleware/     # Request processing (auth, roles)
-│   │   ├── modules/        # Features (auth, jobs)
-│   │   └── routes/         # URL endpoints
-│   ├── prisma/
-│   │   └── schema.prisma   # Database structure
-│   ├── package.json        # Dependencies list
-│   └── tsconfig.json       # TypeScript configuration
-│
-└── frontend/               # Client-side code (React + Next.js)
-    ├── app/
-    │   ├── page.tsx        # Home page
-    │   ├── login/          # Login page
-    │   ├── register/       # Registration page
-    │   ├── jobs/           # Jobs listing page
-    │   └── other pages...  # More pages
-    ├── components/         # Reusable UI parts
-    ├── lib/                # Helper functions
-    ├── package.json        # Dependencies list
-    └── tsconfig.json       # TypeScript configuration
-```
-
----
-
-## Frontend Application
-
-### What is the Frontend?
-
-The frontend is the **user interface** - what users see and interact with in their web browser. It's built with **Next.js** (a React framework) and **TypeScript**.
-
-### Pages in the Frontend
-
-| Page | Purpose | Who Uses It |
-|------|---------|-----------|
-| **Home (/)** | Welcome page with navigation links | Everyone |
-| **Register (/register)** | Create a new account (Candidate or Employer) | New users |
-| **Login (/login)** | Sign in with email and password | Existing users |
-| **Jobs (/jobs)** | See list of available jobs | Job seekers |
-| **Job Detail (/jobs/[id])** | View full details of one job | Everyone |
-| **Apply (/jobs/[id]/apply)** | Submit application for a job | Candidates |
-| **My Jobs (/my-jobs)** | Employers view their posted jobs | Employers |
-| **My Applications (/my-applications)** | Candidates see their job applications | Candidates |
-| **Create Job (/create-job)** | Employers post a new job | Employers |
-| **Job Applicants (/jobs/[id]/applicants)** | Employers see who applied | Employers |
-
-### Frontend Technologies
-
-| Tool | Purpose | Why Used |
-|------|---------|----------|
-| **Next.js 16** | React framework for building web pages | Fast, modern, easy to use |
-| **React 19** | Library for creating interactive UIs | Makes building components simple |
-| **TypeScript** | JavaScript with type checking | Catches errors before running code |
-| **Tailwind CSS** | Styling tool | Quick and easy way to make things look good |
-| **Node ^25** | JavaScript runtime | Runs JavaScript on development machine |
-
-### Frontend Structure (lib and components)
-
-```
-frontend/
-├── lib/
-│   └── auth.ts            # Authentication logic (check if user is logged in)
-├── components/
-│   └── navbar.tsx         # Navigation bar (appears on all pages)
-└── app/
-    ├── globals.css        # Styles for entire app
-    ├── layout.tsx         # Main page layout
-    └── page.tsx           # Home page content
-```
-
----
-
-## Backend Application
-
-### What is the Backend?
-
-The backend is the **server** - it handles all the business logic, stores data, and processes requests from the frontend. It's built with **Express.js** (Node.js framework) and **TypeScript**.
-
-### Backend Responsibilities
-
-1. **Handle User Registration & Login**
-   - Create new user accounts
-   - Verify passwords
-   - Generate login tokens (JWT - a secure way to stay logged in)
-
-2. **Manage Job Postings**
-   - Create new job listings (employers only)
-   - Show available jobs
-   - Update or delete jobs
-
-3. **Handle Job Applications**
-   - Accept job applications from candidates
-   - Track application status
-   - Manage cover letters and resumes
-
-4. **Validate User Permissions**
-   - Check if user is logged in
-   - Check if user has permission to perform action
-   - Prevent unauthorized access
-
-### Backend Technologies
-
-| Tool | Purpose | Why Used |
-|------|---------|----------|
-| **Express.js 5** | Web server framework | Simple, popular way to build APIs |
-| **TypeScript 6** | JavaScript with type safety | Prevents coding errors |
-| **Prisma 7** | Database tool (ORM) | Easy way to interact with database |
-| **PostgreSQL** | Database | Reliable storage for all data |
-| **bcrypt** | Password encryption | Hides passwords securely |
-| **jsonwebtoken** | Login token creation | Safe way to stay logged in |
-| **Zod** | Data validation | Ensures correct data format |
-| **cors** | Cross-origin requests | Allows frontend to talk to backend |
-
-### Backend Folder Structure
-
-```
-backend/src/
-├── app.ts                   # Main Express app setup
-├── server.ts               # Start the server
-├── middleware/
-│   ├── auth.middleware.ts  # Check if user is logged in
-│   └── role.middleware.ts  # Check user type (candidate/employer)
-├── lib/
-│   ├── jwt.ts              # Token creation/verification
-│   └── prisma.ts           # Database connection
-├── modules/
-│   ├── auth/
-│   │   ├── auth.controller.ts   # Handle login/register requests
-│   │   ├── auth.service.ts      # Login/register logic
-│   │   └── auth.routes.ts       # Define auth endpoints
-│   └── jobs/
-│       ├── jobs.controller.ts   # Handle job requests
-│       ├── jobs.service.ts      # Job logic
-│       └── jobs.routes.ts       # Define job endpoints
-└── routes/                 # Central route definitions
-```
-
-### API Endpoints (URLs Backend Responds To)
-
-```
-Authentication Routes:
-POST   /api/auth/register      → Create new account
-POST   /api/auth/login         → Sign in
-GET    /api/auth/logout        → Sign out
-
-Job Routes:
-GET    /api/jobs               → Get all jobs
-GET    /api/jobs/:id           → Get one job details
-POST   /api/jobs               → Create new job (employer)
-PUT    /api/jobs/:id           → Update job (employer)
-DELETE /api/jobs/:id           → Delete job (employer)
-
-Application Routes:
-POST   /api/jobs/:id/apply     → Apply for a job (candidate)
-GET    /api/jobs/:id/applicants → See applications (employer)
-
-Protected Routes:
-GET    /api/protected          → Test if logged in
-GET    /api/employer-only      → Test employer access
-```
-
----
-
-## Database Design
-
-### What is a Database?
-
-A database is like a digital filing system where all information is stored - user accounts, job listings, applications, etc.
-
-### How Data is Organized
-
-The database uses **Prisma ORM** which organizes data into **tables** (also called **models**). Think of each table as an Excel spreadsheet with rows and columns.
-
-### Database Tables Explained
-
-#### 1. **User Table** - Stores user account information
-```
-Contains:
-- id              : Unique identifier for each user
-- name            : Person's name
-- email           : Email address (unique - only one per email)
-- password        : Encrypted password
-- role            : Type of user (CANDIDATE, EMPLOYER, or ADMIN)
-- createdAt       : When account was created
-- companyId       : If employer, which company they work for
-```
-
-**Roles Explained:**
-- **CANDIDATE**: Job seekers looking for work
-- **EMPLOYER**: Companies posting jobs
-- **ADMIN**: Site administrators (future feature)
-
----
-
-#### 2. **CandidateProfile Table** - Extra info for job seekers
-```
-Contains:
-- id              : Unique identifier
-- userId          : Links to User
-- headline        : Professional headline (e.g., "Python Developer")
-- bio             : About yourself
-- skills          : List of skills (e.g., "JavaScript, React, Node.js")
-- resumeUrl       : Link to stored resume file
-- resumeFileName  : Name of resume file
-- resumeFileType  : File type (pdf, docx, etc.)
-```
-
----
-
-#### 3. **Company Table** - Stores employer company info
-```
-Contains:
-- id              : Unique identifier
-- name            : Company name
-- description     : What company does
-- location        : Where company is based
-- website         : Company website URL
-- createdAt       : When company profile created
-```
-
----
-
-#### 4. **Job Table** - Stores job listings
-```
-Contains:
-- id              : Unique identifier for job
-- jobCode         : Special code for this job (optional)
-- title           : Job title (e.g., "Senior Developer")
-- description     : Full job description
-- location        : Where job is located
-- jobType         : Type (Full-time, Part-time, Remote)
-- salaryMin       : Minimum salary (optional)
-- salaryMax       : Maximum salary (optional)
-- status          : Job status (OPEN or CLOSED)
-- createdAt       : When job was posted
-- companyId       : Which company posted this job
-- createdById     : Which user (employer) posted this
-```
-
----
-
-#### 5. **Application Table** - Stores job applications
-```
-Contains:
-- id              : Unique identifier
-- jobId           : Which job this application is for
-- candidateId     : Which person applied
-- coverLetter     : Optional cover letter text
-- resumeUrl       : Link to attached resume
-- resumeFileName  : Name of resume file
-- resumeFileType  : File type (pdf, docx, etc.)
-- status          : Application status (PENDING, REVIEWED, SHORTLISTED, REJECTED)
-- appliedAt       : When person applied
-```
-
----
-
-### How Tables Connect (Relationships)
-
-```
-User ←→ Company
-  ├─ User can work for ONE company (employer)
-  └─ Company can have MANY users
-
-User ←→ CandidateProfile
-  ├─ User has ONE candidate profile (if candidate)
-  └─ Profile belongs to ONE user
-
-User ←→ Job (as creator)
-  ├─ User can POST many jobs (if employer)
-  └─ Job created by ONE user
-
-Company ←→ Job
-  ├─ Company has MANY jobs
-  └─ Job belongs to ONE company
-
-Job ←→ Application
-  ├─ Job has MANY applications
-  └─ Application for ONE job
-
-User ←→ Application (as candidate)
-  ├─ User can make MANY applications
-  └─ Application from ONE user
-```
-
----
-
-## How the Application Works
-
-### User Registration Flow
-
-```
-1. User visits /register
-2. User selects role (Candidate or Employer)
-3. User enters name, email, password
-4. Frontend sends data to backend
-5. Backend checks:
-   - Email not already used
-   - Password is strong
-6. Backend creates User record in database
-7. User can now login
-```
-
-### User Login Flow
-
-```
-1. User visits /login
-2. User enters email and password
-3. Frontend sends to backend
-4. Backend checks:
-   - Email exists in database
-   - Password matches (after decryption)
-5. Backend creates JWT token (security token)
-6. Token sent to frontend
-7. Frontend stores token (in browser storage)
-8. User is now logged in
-9. Subsequent requests include token to prove identity
-```
-
-### Employer Posts a Job
-
-```
-1. Employer (logged in) visits /create-job
-2. Employer fills form:
-   - Job title
-   - Description
-   - Location
-   - Job type (full-time, etc.)
-   - Salary range
-3. Frontend validates and sends to backend
-4. Backend validates again
-5. Backend creates Job record in database
-6. Job now appears on /jobs page for candidates
-```
-
-### Candidate Applies for Job
-
-```
-1. Candidate (logged in) views job on /jobs/[id]
-2. Candidate clicks "Apply"
-3. Candidate fills form:
-   - Cover letter (optional)
-   - Upload resume
-4. Frontend sends to backend
-5. Backend creates Application record
-6. Backend prevents duplicate applications (one per candidate per job)
-7. Application now visible to employer
-8. Candidate sees application in /my-applications
-```
-
-### Employer Reviews Applications
-
-```
-1. Employer visits /jobs/[id]/applicants
-2. Sees list of all applications for that job
-3. Can view:
-   - Candidate name and profile
-   - Cover letter
-   - Resume
-   - Application status
-4. Can change status:
-   - PENDING → REVIEWED
-   - REVIEWED → SHORTLISTED or REJECTED
-```
-
----
-
-## Key Features
-
-### 1. **User Authentication**
-   - Secure registration with password encryption
-   - Login with JWT tokens
-   - Password protection
-
-### 2. **Role-Based Access Control**
-   - Different features for candidates vs employers
-   - Middleware checks permissions before allowing actions
-
-### 3. **Job Management**
-   - Employers can create, edit, delete jobs
-   - Candidates can search and filter jobs
-   - Job status tracking (OPEN/CLOSED)
-
-### 4. **Application Tracking**
-   - Candidates track their applications
-   - Employers track applicants
-   - Application status updates (PENDING → REVIEWED → SHORTLISTED/REJECTED)
-
-### 5. **Resume Management**
-   - Candidates upload resumes
-   - Resumes stored and linked to applications
-   - Employers can download resumes
-
-### 6. **Data Validation**
-   - Frontend validates user input (quick feedback)
-   - Backend validates data (security)
-   - Prevents invalid data in database
-
-### 7. **CORS Support**
-   - Frontend and backend can communicate across different domains
-   - Secure cross-origin requests
-
----
-
-## Technology Stack
-
-### Frontend Stack
-```
-Framework:      Next.js 16.2.4 (React framework)
-UI Library:     React 19.2.5 (Component library)
-Language:       TypeScript 7 (Type-safe JavaScript)
-Styling:        Tailwind CSS 4 (Utility-first CSS)
-Type Checking:  @types packages for libraries
-Runtime:        Node.js 25
-Package Manager: npm
-```
-
-### Backend Stack
-```
-Runtime:        Node.js
-Framework:      Express.js 5.2.1 (Web server)
-Language:       TypeScript 7 (Type-safe JavaScript)
-Database ORM:   Prisma 7.7.0 (Database interaction)
-Database:       PostgreSQL (Data storage)
-Authentication: jsonwebtoken 9.0.3 (JWT tokens)
-Password:       bcrypt 6.0.0 (Password encryption)
-Validation:     Zod 4.3.6 (Data validation)
-CORS:           cors 2.8.6 (Cross-origin support)
-Dev Tools:      tsx 4.21.0 (TypeScript runner)
-```
-
-### Version Summary
-```
-Frontend: Next.js 16 + React 19 + TypeScript 7
-Backend:  Express 5 + Node.js + TypeScript 7
-Database: PostgreSQL with Prisma ORM
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-- **Node.js** version 25 or higher installed
-- **npm** (comes with Node.js)
-- **PostgreSQL** database installed and running
-
-### Backend Setup
-
-```bash
-# 1. Navigate to backend folder
-cd backend
-
-# 2. Install dependencies
-npm install
-
-# 3. Create .env file with database connection
-# Add to .env:
-# DATABASE_URL="postgresql://user:password@localhost:5432/job_portal"
-
-# 4. Setup database
-npx prisma migrate dev
-
-# 5. Seed database (optional - add sample data)
-npm run seed
-
-# 6. Start development server
-npm run dev
-# Server runs on http://localhost:5000
-```
-
-### Frontend Setup
-
-```bash
-# 1. Navigate to frontend folder
-cd frontend
-
-# 2. Install dependencies
-npm install
-
-# 3. Start development server
-npm run dev
-# Open http://localhost:3000 in browser
-```
-
-### Building for Production
-
-**Backend:**
-```bash
-cd backend
-npm run build      # Compile TypeScript to JavaScript
-npm start          # Run compiled code
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run build      # Build optimized version
-npm start          # Run production build
-```
-
----
-
-## Summary
-
-**Job Portal** is a complete job marketplace application with:
-
-- ✅ **User Registration & Authentication** - Secure login system
-- ✅ **Job Posting** - Employers can list jobs
-- ✅ **Job Search** - Candidates can find jobs
-- ✅ **Applications** - Candidates apply, employers review
-- ✅ **Resume Management** - Upload and share resumes
-- ✅ **Role-Based Access** - Different views for candidates/employers
-- ✅ **Modern Tech Stack** - Latest frameworks and tools
-
-The application is fully functional, uses modern best practices, and is ready for further development and deployment.
-
----
-
-## Next Steps for Enhancement
-
-1. **Email Notifications** - Send emails on new applications
-2. **Advanced Filtering** - Filter jobs by salary, skills, location
-3. **User Profiles** - Complete employer and candidate profiles
-4. **Messaging System** - Direct messaging between candidates and employers
-5. **Analytics Dashboard** - Track applications and hiring metrics
-6. **Payment Integration** - Charging for job postings
-7. **Mobile App** - React Native version for phones
-8. **Search Optimization** - Better search and recommendations
+# Job Portal — Senior Project Analysis (Full-Stack Audit)
+
+This document is a code-grounded analysis of the current Job Portal workspace (frontend + backend + database). It focuses on architecture, patterns, correctness, security, maintainability, and a prioritized roadmap.
+
+## Executive summary
+
+### What’s strong
+
+- Clear feature modularization on the backend (auth + jobs) with route → controller → service layering.
+- Prisma schema is clean and appropriately indexed for common access patterns.
+- Auth design uses access + refresh tokens, stored in HTTP-only cookies (good baseline for browser apps).
+- Upload pipeline uses multer memory storage + Cloudinary, plus signed URLs for resume access.
+- Centralized response/error helpers reduce repeated boilerplate.
+
+### Main gaps (highest impact)
+
+1. Backend/Frontend contract mismatches cause real UX breakage (logout, /auth/me shape, application list response parsing, job filters not applied).
+2. Data leakage risk: applicants endpoint returns full User records for candidates (includes hashed password + refresh token fields).
+3. Backend bootstrap duplication / middleware ordering: duplicated cookie parsing + duplicated auth route mounting; /api/protected cannot read cookie auth due to middleware order.
+4. Production readiness: hardcoded localhost URLs, CORS origin, cookie flags (secure: false), and email provider set to Ethereal test accounts.
+
+If you address only one theme: make API contracts consistent (response shapes + routes + DTOs) and lock down candidate data exposure.
+
+## Workspace overview
+
+- Backend: Express 5 + TypeScript + Prisma + PostgreSQL
+  - Entry: [backend/src/server.ts](backend/src/server.ts), app wiring: [backend/src/app.ts](backend/src/app.ts)
+- Frontend: Next.js App Router + React 19 + Tailwind
+  - Root layout/provider: [frontend/app/layout.tsx](frontend/app/layout.tsx)
+- Database schema: [backend/prisma/schema.prisma](backend/prisma/schema.prisma)
+
+## System architecture (how requests flow)
+
+### Browser session model
+
+- On login, backend sets cookies accessToken (15m) and refreshToken (7d) in [backend/src/modules/auth/auth.controller.ts](backend/src/modules/auth/auth.controller.ts).
+- Frontend sends `credentials: "include"` on most requests.
+- If a request returns 401, the frontend wrapper retries after calling `/api/auth/refresh` (see [frontend/lib/api.ts](frontend/lib/api.ts)).
+
+### Backend layering & patterns
+
+Routes → controllers → services
+
+- Auth routes: [backend/src/modules/auth/auth.routes.ts](backend/src/modules/auth/auth.routes.ts)
+- Jobs routes: [backend/src/modules/jobs/jobs.routes.ts](backend/src/modules/jobs/jobs.routes.ts)
+
+Cross-cutting middleware
+
+- Auth extraction (cookie-first, bearer fallback): [backend/src/middleware/auth.middleware.ts](backend/src/middleware/auth.middleware.ts)
+- Role authorization: [backend/src/middleware/authorize.middleware.ts](backend/src/middleware/authorize.middleware.ts) and [backend/src/middleware/role.middleware.ts](backend/src/middleware/role.middleware.ts)
+- Zod request validation: [backend/src/middleware/validate.middleware.ts](backend/src/middleware/validate.middleware.ts)
+- Error handling: [backend/src/middleware/error.middleware.ts](backend/src/middleware/error.middleware.ts)
+- Rate limiting (login): [backend/src/middleware/rateLimit.middleware.ts](backend/src/middleware/rateLimit.middleware.ts)
+
+Response standardization
+
+- Success responses via [backend/src/utils/ApiResponse.ts](backend/src/utils/ApiResponse.ts)
+- Async error wrapper: [backend/src/utils/asyncHandler.ts](backend/src/utils/asyncHandler.ts)
+- Typed-ish application errors: [backend/src/utils/AppError.ts](backend/src/utils/AppError.ts)
+
+## Backend analysis
+
+### Bootstrapping & middleware order
+
+- App config: [backend/src/app.ts](backend/src/app.ts)
+- Server start: [backend/src/server.ts](backend/src/server.ts)
+
+What’s happening now
+
+- cookieParser() is registered in both files.
+- /api/auth routes are mounted in both files.
+- Error middleware is mounted only in server.ts.
+- /api/protected route is registered before any cookie parser middleware, so cookie-based auth won’t work there (only bearer auth).
+
+Recommendation
+
+- Keep all middleware and route mounting inside app.ts only.
+- Keep server.ts for dotenv.config() + listen() only.
+
+### Authentication module (register/login/refresh/verify/reset)
+
+Key files
+
+- Routes: [backend/src/modules/auth/auth.routes.ts](backend/src/modules/auth/auth.routes.ts)
+- Controller: [backend/src/modules/auth/auth.controller.ts](backend/src/modules/auth/auth.controller.ts)
+- Service: [backend/src/modules/auth/auth.service.ts](backend/src/modules/auth/auth.service.ts)
+- JWT helpers: [backend/src/lib/jwt.ts](backend/src/lib/jwt.ts)
+- Constants (cookie names + expiries): [backend/src/constants/index.ts](backend/src/constants/index.ts)
+
+Implemented endpoints
+
+- POST /api/auth/register
+- POST /api/auth/login (rate-limited)
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password/:token
+- POST /api/auth/verify-email/:token
+- POST /api/auth/resend-verification
+- POST /api/auth/refresh
+- GET /api/auth/me (requires auth + role)
+
+Not implemented (but frontend calls it)
+
+- POST /api/auth/logout is called from [frontend/lib/auth.ts](frontend/lib/auth.ts) but has no route/controller in the backend.
+  - There is a logoutUserService() in [backend/src/modules/auth/auth.service.ts](backend/src/modules/auth/auth.service.ts), but it is not wired.
+
+Token & session behavior
+
+- Refresh tokens are stored in the database (User.refreshToken) and verified against the incoming cookie. This is a solid pattern for revocation.
+- refresh currently only sets a new access token cookie.
+
+Contract mismatch: /auth/me
+
+- Backend GET /api/auth/me returns req.user from JWT payload (typically { userId, role, iat, exp }).
+- Frontend expects AuthUser (id/name/email/role/emailVerified) in [frontend/types/auth.ts](frontend/types/auth.ts) and uses user.name in multiple places (Navbar, Create Job).
+
+Recommended fix: make /auth/me query the database and return a safe user DTO:
+
+- id, name, email, role, emailVerified, companyId (and optionally company name)
+- never return password, refreshToken, reset/verify tokens, etc.
+
+### Jobs module (jobs + applications + resumes)
+
+Key files
+
+- Routes: [backend/src/modules/jobs/jobs.routes.ts](backend/src/modules/jobs/jobs.routes.ts)
+- Controller: [backend/src/modules/jobs/jobs.controller.ts](backend/src/modules/jobs/jobs.controller.ts)
+- Service: [backend/src/modules/jobs/jobs.service.ts](backend/src/modules/jobs/jobs.service.ts)
+- Upload middleware: [backend/src/middleware/upload.middleware.ts](backend/src/middleware/upload.middleware.ts)
+- Cloudinary helpers: [backend/src/utils/cloudinary.ts](backend/src/utils/cloudinary.ts)
+- Admin cleanup endpoints: [backend/src/modules/jobs/file-cleanup.controller.ts](backend/src/modules/jobs/file-cleanup.controller.ts)
+
+Implemented endpoints (high level)
+
+- GET /api/jobs (paginated)
+- GET /api/jobs/:id
+- POST /api/jobs (EMPLOYER)
+- GET /api/jobs/my-jobs (EMPLOYER)
+- POST /api/jobs/:jobId/apply (CANDIDATE, multipart + resume)
+- GET /api/jobs/my-applications (CANDIDATE)
+- GET /api/jobs/:jobId/applicants (EMPLOYER)
+- PATCH /api/jobs/:jobId/applications/:applicationId/status (EMPLOYER)
+- GET /api/jobs/:jobId/applications/:applicationId/resume (EMPLOYER, signed URL)
+- Admin storage:
+  - GET /api/jobs/storage/stats (ADMIN)
+  - GET /api/jobs/storage/orphans (ADMIN)
+  - DELETE /api/jobs/storage/orphans (ADMIN)
+
+Correctness gaps
+
+1. Filtering logic exists but is not used
+   - There is filtering logic in getAllJobsService() in [backend/src/modules/jobs/jobs.service.ts](backend/src/modules/jobs/jobs.service.ts)
+   - But the actual handler getAllJobs in [backend/src/modules/jobs/jobs.controller.ts](backend/src/modules/jobs/jobs.controller.ts) bypasses it and returns all jobs without applying keyword/location/jobType/salary filters.
+
+2. Inconsistent error semantics
+   - Several service functions throw plain Error (job not found, unauthorized, duplicate apply). These typically become 500s instead of 4xx.
+   - Prefer throwing AppError with clear status codes.
+
+Security gap (P0)
+
+- GET /api/jobs/:jobId/applicants includes candidate: true in Prisma include via [backend/src/modules/jobs/jobs.service.ts](backend/src/modules/jobs/jobs.service.ts).
+- This likely returns sensitive fields from User (including hashed password and refresh token fields), which should never leave the server.
+
+Recommendation: in applicants responses, return only a safe candidate projection:
+
+- candidate: { id, name, email } and optionally candidateProfile fields you want the employer to see.
+
+## Database design (Prisma)
+
+Schema: [backend/prisma/schema.prisma](backend/prisma/schema.prisma)
+
+### Entities and relationships
+
+- User
+  - role: CANDIDATE | EMPLOYER | ADMIN
+  - optional companyId relationship for employers
+  - auth fields: email verification tokens, password reset tokens, refresh token
+- Company
+  - has many users + jobs
+- Job
+  - belongs to company
+  - createdBy: user relation (PostedJobs)
+  - has many applications
+- Application
+  - join entity between job and candidate user
+  - unique constraint: (jobId, candidateId) prevents duplicate applications
+  - stores resume metadata and resumePublicId
+- CandidateProfile
+  - one-to-one with User
+
+### Indexes
+
+Indexes are generally aligned with common queries:
+
+- Jobs: createdById, companyId, status, createdAt, location, jobType, composite (status, createdAt)
+- Applications: jobId, candidateId, status, appliedAt, composite (candidateId, appliedAt) and (jobId, appliedAt)
+- Users: email unique, role, companyId, token lookup indexes
+
+## Frontend analysis (Next.js App Router)
+
+### High-level structure
+
+- Root layout provides AuthProvider and global nav: [frontend/app/layout.tsx](frontend/app/layout.tsx)
+- Auth state:
+  - Provider: [frontend/components/AuthProvider.tsx](frontend/components/AuthProvider.tsx)
+  - Route guard: [frontend/components/ProtectedRoute.tsx](frontend/components/ProtectedRoute.tsx)
+- API access:
+  - Auth helpers: [frontend/lib/auth.ts](frontend/lib/auth.ts)
+  - Fetch wrapper with refresh-on-401: [frontend/lib/api.ts](frontend/lib/api.ts)
+
+### Current pages & flows
+
+- Public
+  - Home: [frontend/app/page.tsx](frontend/app/page.tsx)
+  - Job list + filters UI: [frontend/app/jobs/page.tsx](frontend/app/jobs/page.tsx)
+  - Job details: [frontend/app/jobs/[id]/page.tsx](frontend/app/jobs/[id]/page.tsx)
+  - Register: [frontend/app/register/page.tsx](frontend/app/register/page.tsx)
+  - Login: [frontend/app/login/page.tsx](frontend/app/login/page.tsx)
+  - Forgot/reset password: [frontend/app/forgot-password/page.tsx](frontend/app/forgot-password/page.tsx), [frontend/app/reset-password/[token]/page.tsx](frontend/app/reset-password/[token]/page.tsx)
+  - Verify/resend email: [frontend/app/verify-email/[token]/page.tsx](frontend/app/verify-email/[token]/page.tsx), [frontend/app/resend-verification/page.tsx](frontend/app/resend-verification/page.tsx)
+
+- Candidate
+  - Apply to job: [frontend/app/jobs/[id]/apply/page.tsx](frontend/app/jobs/[id]/apply/page.tsx)
+  - My applications: [frontend/app/my-applications/page.tsx](frontend/app/my-applications/page.tsx)
+
+- Employer
+  - Create job: [frontend/app/create-job/page.tsx](frontend/app/create-job/page.tsx)
+  - My jobs: [frontend/app/my-jobs/page.tsx](frontend/app/my-jobs/page.tsx)
+  - Applicants: [frontend/app/jobs/[id]/applicants/page.tsx](frontend/app/jobs/[id]/applicants/page.tsx)
+
+### Strengths
+
+- AuthProvider is a good direction: a single place to check session on app load.
+- ProtectedRoute provides a simple RBAC gate for client routes.
+- Central apiFetch() wrapper is a good place for standardized headers, cookie credentials, and refresh retry.
+
+### Correctness / integration issues (most important)
+
+1. Hardcoded API base URL
+   - Both [frontend/lib/auth.ts](frontend/lib/auth.ts) and [frontend/lib/api.ts](frontend/lib/api.ts) hardcode http://localhost:5000/api.
+   - This blocks deployment to any other environment.
+
+2. Logout mismatch
+   - Frontend calls POST /api/auth/logout in [frontend/lib/auth.ts](frontend/lib/auth.ts)
+   - Backend does not expose that route.
+
+3. Job filters UI not wired end-to-end
+   - UI builds query params in [frontend/app/jobs/page.tsx](frontend/app/jobs/page.tsx) but the actual fetch() call ignores them and always hits /api/jobs without query params.
+   - Backend currently does not apply keyword/location/jobType filters in the controller anyway.
+
+4. My Applications response parsing bug
+   - [frontend/app/my-applications/page.tsx](frontend/app/my-applications/page.tsx) reads data.applications, but backend returns data.data.applications via sendSuccess().
+
+5. Auth “source of truth” is inconsistent
+   - Home page uses localStorage.getItem("role"): [frontend/app/page.tsx](frontend/app/page.tsx)
+   - But the current source login flow (AuthProvider) does not set that localStorage value.
+   - Result: Home navigation can be wrong even when logged in.
+
+6. /auth/me shape mismatch (critical for UX)
+   - Frontend expects a full AuthUser and displays user.name (Navbar + Create Job)
+   - Backend /auth/me returns a JWT payload, not a user record.
+
+### Recommendation: standardize frontend API access
+
+- Use apiFetch() everywhere (including job list, apply, applicants, register if desired).
+- Move API base URL to NEXT_PUBLIC_API_URL.
+- Align response parsing: always read result.data from backend sendSuccess().
+
+## Security & privacy review
+
+### Cookie auth & CSRF
+
+You are using cookies for auth, which is fine, but note:
+
+- Cookies automatically attach to requests → you should treat the app as potentially needing CSRF protections.
+- Current cookies are httpOnly: true and sameSite: "lax" (good baseline).
+- For production over HTTPS, set secure: true and consider sameSite strategy.
+
+### Data exposure (P0)
+
+- Applicants endpoint should not return full candidate user rows.
+
+### Email system is test-only
+
+- [backend/src/utils/email.ts](backend/src/utils/email.ts) uses nodemailer.createTestAccount() (Ethereal).
+- Good for local testing, not for production.
+
+### Password reset / verify tokens
+
+- Tokens are stored directly in DB (not hashed). That’s acceptable for a demo, but for production consider hashing tokens at rest.
+
+## Developer experience & ops
+
+### Scripts
+
+- Backend: [backend/package.json](backend/package.json)
+  - npm run dev uses tsx watch
+  - npm run seed seeds the database
+- Frontend: [frontend/package.json](frontend/package.json)
+  - npm run dev runs Next.js
+
+### Environment configuration
+
+Back end expects at least:
+
+- DATABASE_URL
+- JWT_SECRET
+- Cloudinary env vars (as used in [backend/src/utils/cloudinary.ts](backend/src/utils/cloudinary.ts))
+- optionally FRONTEND_URL (auth email links)
+
+Front end should ideally use:
+
+- NEXT_PUBLIC_API_URL
+
+### Repo hygiene
+
+- Build output folder frontend/.next exists in the workspace; it should stay untracked (it is ignored by the frontend gitignore).
+
+## Prioritized roadmap
+
+### P0 (fix immediately)
+
+1. Add POST /api/auth/logout backend route/controller
+   - Clears cookies and nulls DB refresh token (using logoutUserService).
+2. Fix applicants data exposure
+   - Return only safe candidate fields (select projection).
+3. Fix /api/auth/me response shape
+   - Return safe user DTO from DB (not token payload).
+4. Fix frontend response parsing for my applications
+   - Read result.data.applications.
+
+### P1 (stability + product correctness)
+
+1. Unify API base URL and request wrapper
+   - Replace hardcoded localhost with env var.
+2. Wire job filtering end-to-end
+   - Frontend should pass query params.
+   - Backend should apply filtering logic (either use existing service or move filters into controller).
+3. Replace plain Error throws in services with AppError
+   - Correct 400/401/404 handling.
+4. Remove duplicate validation approach
+   - Choose one: route-level Zod middleware or controller-level validateBody.
+
+### P2 (production readiness)
+
+1. CORS origin + cookie flags via env
+2. Email provider swap (SendGrid/Mailgun/SES) + templates
+3. Consider CSRF strategy if using cookies in production
+4. Improve README formatting and align docs with reality (Cloudinary vs local uploads)
+
+## Optional improvements (nice-to-have)
+
+- Define explicit DTO types for API responses on both sides.
+- Add e2e smoke tests for the critical flows (register → verify → login → apply → view applicants).
+- Add pagination UI on job list and my pages.
+
+If you want, I can implement the P0 fixes (logout endpoint + safe applicants projection + /me DTO + frontend parsing fixes) in code as a follow-up.

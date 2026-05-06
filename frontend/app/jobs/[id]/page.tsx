@@ -25,12 +25,12 @@ async function getJob(id: string): Promise<Job | null> {
 
     const data = await res.json();
 
-    if (!data.success) {
+    if (!res.ok || !data.success) {
       return null;
     }
 
-    return data.job;
-  } catch (error) {
+    return data.data?.job ?? null;
+  } catch {
     return null;
   }
 }

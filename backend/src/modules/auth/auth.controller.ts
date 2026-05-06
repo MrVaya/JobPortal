@@ -1,49 +1,127 @@
 import { Request, Response } from "express";
-import { loginUser, registerUser } from "./auth.service";
-import { validateBody } from "../../utils/validate";
-import { registerSchema, loginSchema } from "../../validations/auth.validation";
+import {
+  forgotPasswordService,
+  loginUser,
+  registerUser,
+  refreshTokenService,
+  resendVerificationEmailService,
+  resetPasswordService,
+  verifyEmailService,
+} from "./auth.service";
+import { asyncHandler } from "../../utils/asyncHandler";
+import { AppError } from "../../utils/AppError";
+import { sendSuccess } from "../../utils/ApiResponse";
+import { COOKIE_NAMES } from "../../constants";
 
-export const register = async (req: Request, res: Response) => {
-  try {
-    const validatedData = validateBody(registerSchema, req.body);
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const user = await registerUser(req.body);
 
-    const user = await registerUser(validatedData);
-    return res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      user,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to register user",
+  return sendSuccess({
+    res,
+    statusCode: 201,
+    message: "User registered successfully",
+    data: { user },
+  });
+});
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const result = await loginUser(req.body);
+
+ res.cookie(COOKIE_NAMES.ACCESS_TOKEN, result.accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
+
+ res.cookie(COOKIE_NAMES.REFRESH_TOKEN, result.refreshToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+ const isMobile = req.headers["x-client-type"] === "mobile";
+
+return sendSuccess({
+  res,
+  message: "Login successful",
+  data: {
+    user: result.user,
+    ...(isMobile && {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }),
+  },
+});
+});
+
+export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+  const result = await forgotPasswordService(req.body.email);
+
+  return sendSuccess({
+    res,
+    message: result.message,
+  });
+});
+
+export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+  const token = req.params.token;
+  const result = await resetPasswordService(token, req.body.password);
+
+  return sendSuccess({
+    res,
+    message: result.message,
+  });
+});
+
+export const resendVerificationEmail = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await resendVerificationEmailService(req.body.email);
+
+    return sendSuccess({
+      res,
+      message: result.message,
     });
   }
-};
+);
 
-export const login = async (req: Request, res: Response) => {
-  try {
-    const validatedData = validateBody(loginSchema, req.body);
+export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
+  const token = req.params.token;
+  const result = await verifyEmailService(token);
 
-    const result = await loginUser(validatedData);
+  return sendSuccess({
+    res,
+    message: result.message,
+  });
+});
 
-    return res.status(200).json({
-      success: true,
-      message: "Login successful",
-      ...result,
-    });
-  } catch (error: any) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || "Failed to login user",
-    });
+export const getMe = asyncHandler(async (req: any, res: Response) => {
+  return sendSuccess({
+    res,
+    message: "Authenticated user retrieved successfully",
+    data: { user: req.user },
+  });
+});
+
+export const refreshToken = asyncHandler(async (req: any, res: Response) => {
+  const token = req.cookies?.[COOKIE_NAMES.REFRESH_TOKEN]
+
+  if (!token) {
+    throw new AppError("No refresh token", 401);
   }
-};
 
-export const getMe = async (req: any, res: Response) => {
-    res.json({
-        success: true,
-        message: "Authenticated user retrieved successfully",
-        user: req.user,
-    });
-};
+  const result = await refreshTokenService(token);
+
+  res.cookie("accessToken", result.accessToken, {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    maxAge: 15 * 60 * 1000,
+  });
+
+  return sendSuccess({
+    res,
+    message: "Session refreshed successfully",
+  });
+});

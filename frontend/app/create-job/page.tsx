@@ -1,11 +1,34 @@
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 export default function CreateJobPage() {
+   return (
+    <ProtectedRoute allowedRoles={["EMPLOYER"]} redirectTo="/jobs">
+      <CreateJobContent />
+    </ProtectedRoute>
+  );
+}
+
+function CreateJobContent() {
+  return (
+    <main className="p-6">
+      <h1 className="text-2xl font-bold">Create Job</h1>
+      <CreateJobForm />
+    </main>
+  );
+}
+
+function CreateJobForm() {
   const router = useRouter();
+  const { user, role, isAuthenticated, isLoading } = useAuth();
+  const isEmployer = String(role).toUpperCase() === "EMPLOYER";
 
   const [form, setForm] = useState({
     title: "",
@@ -19,29 +42,23 @@ export default function CreateJobPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [authorized, setAuthorized] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    if (isLoading) return;
 
-    if (!token) {
+    if (!isAuthenticated) {
       router.push("/login");
       return;
     }
 
-    if (role !== "EMPLOYER") {
+    if (!isEmployer) {
       router.push("/jobs");
-      return;
     }
-
-    setAuthorized(true);
-    setCheckingAuth(false);
-  }, [router]);
+  }, [isLoading, isAuthenticated, isEmployer, router]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     setForm({
       ...form,
@@ -56,28 +73,17 @@ export default function CreateJobPage() {
       setLoading(true);
       setMessage("");
 
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        setMessage("No token found. Please log in.");
-        return;
-      }
-
-      const res = await fetch("http://localhost:5000/api/jobs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: form.title,
-          description: form.description,
-          location: form.location,
-          jobType: form.jobType,
-          salaryMin: form.salaryMin ? Number(form.salaryMin) : null,
-          salaryMax: form.salaryMax ? Number(form.salaryMax) : null,
-        }),
-      });
+     const res = await apiFetch("/jobs", {
+  method: "POST",
+  body: JSON.stringify({
+    title: form.title,
+    description: form.description,
+    location: form.location,
+    jobType: form.jobType,
+    salaryMin: form.salaryMin ? Number(form.salaryMin) : null,
+    salaryMax: form.salaryMax ? Number(form.salaryMax) : null,
+  }),
+});
 
       const data = await res.json();
 
@@ -90,30 +96,37 @@ export default function CreateJobPage() {
       } else {
         setMessage(data.message || "Failed to create job.");
       }
-    } catch (error) {
+    } catch {
       setMessage("Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (checkingAuth) {
+  if (isLoading) {
     return <main className="p-6">Checking access...</main>;
   }
 
-  if (!authorized) {
+  if (!isAuthenticated || !isEmployer) {
     return null;
   }
 
   return (
     <main className="p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-  <Link href="/my-jobs" className="text-blue-600 text-sm">
-    ← Back to My Jobs
-  </Link>
-</div>
+        <Link href="/my-jobs" className="text-blue-600 text-sm">
+          ← Back to My Jobs
+        </Link>
+      </div>
+
       <div className="border rounded-lg p-6 shadow-sm">
         <h1 className="text-2xl font-bold mb-4">Create Job</h1>
+
+        {user && (
+          <p className="mb-4 text-sm text-gray-600">
+            Creating job as {user.name}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
